@@ -10,6 +10,13 @@ import {HeatmapData, HeatmapElement, HeatmapValue} from "./input";
 import Reorderer from "../reorder/reorderer";
 import MoloReorderer from "../reorder/moloReorderer";
 
+type ViewPort = {
+    xTop: number,
+    yTop: number,
+    xBottom: number,
+    yBottom: number
+};
+
 export class Heatmap {
     private element: HTMLElement;
     private settings: HeatmapSettings;
@@ -23,6 +30,9 @@ export class Heatmap {
     private values: HeatmapValue[][];
 
     private tooltip: d3.Selection<HTMLDivElement, any, HTMLElement, any> | null = null;
+
+    private originalViewPort: ViewPort;
+    private currentViewPort: ViewPort;
 
     private readonly MARGIN = {
         left: 0,
@@ -46,6 +56,16 @@ export class Heatmap {
         if (this.settings.enableTooltips) {
             this.tooltip = this.initTooltip();
         }
+
+        // Initialize the viewport with the default width and height of the visualization
+        this.originalViewPort = {
+            xTop: 0,
+            yTop: 0,
+            xBottom: options.width,
+            yBottom: options.height
+        }
+
+        this.currentViewPort = this.originalViewPort;
 
         this.initCSS();
         this.redraw();
@@ -288,11 +308,12 @@ export class Heatmap {
      * and columns currently set to be visualized.
      */
     private determineSquareWidth() {
-        let visualizationWidth = this.settings.width - this.settings.textWidth - (this.columns.length - 1) * this.settings.squarePadding;
-        let visualizationHeight = this.settings.height - this.settings.textHeight - (this.rows.length - 1) * this.settings.squarePadding;
+        const visualizationWidth = this.currentViewPort.xBottom - this.currentViewPort.xTop;
+        const visualizationHeight = this.currentViewPort.yBottom - this.currentViewPort.yTop;
 
-        let squareWidth = Math.floor(visualizationWidth / this.columns.length);
-        let squareHeight = Math.floor(visualizationHeight / this.rows.length);
+        // Squares should at least be one pixel in height
+        let squareWidth = Math.max(1, visualizationWidth / this.columns.length);
+        let squareHeight = Math.max(1, visualizationHeight / this.rows.length);
 
         return Math.min(squareWidth, squareHeight, this.settings.maximumSquareWidth)
     }
@@ -312,8 +333,16 @@ export class Heatmap {
         const zoom = d3.zoom()
             .extent([[0, 0], [width, height]])
             .scaleExtent([1, 8])
+            .on("start", () => {
+                this.zoomed({ k: 1, x: 0, y: 0 }, vis);
+                vis.attr("transform", d3.event.transform);
+            })
             .on("zoom", () => {
                 vis.attr("transform", d3.event.transform);
+            })
+            .on("end", () => {
+                vis.attr("transform", null);
+                this.zoomed(d3.event.transform, vis);
             });
 
         vis = d3.select("#" + this.element.id)
@@ -332,23 +361,33 @@ export class Heatmap {
         this.redrawColumnTitles(vis);
     }
 
-    // private zoomed() {
-    //     d3..attr("transform", `translate(${d3.event.translate})scale(${d3.event.scale})`);
-    //     console.log("Zoomed");
-    //     console.log(d3.event.transform);
-    // }
+    private zoomed({ k, x, y }: { k: number, x: number, y: number }, vis) {
+        // Recalculate the current viewport
+        this.currentViewPort = {
+            xTop: x + this.originalViewPort.xTop * k,
+            yTop: y + this.originalViewPort.yTop * k,
+            xBottom: x + this.originalViewPort.xBottom * k,
+            yBottom: y + this.originalViewPort.yBottom * k
+        }
+
+        this.redrawGrid(vis);
+        this.redrawRowTitles(vis);
+        this.redrawColumnTitles(vis);
+    }
 
     private redrawGrid(vis: d3.Selection<SVGSVGElement, any, HTMLElement, any>) {
         let squareWidth = this.determineSquareWidth();
         let interpolator = d3.interpolateLab(d3.lab("#EEEEEE"), d3.lab("#1565C0"));
+
+        vis.selectAll("rect").remove();
 
         for (let row = 0; row < this.rows.length; row++) {
             vis.selectAll("svg")
                 .data(this.values[row])
                 .enter()
                 .append("rect")
-                .attr("x", (d, i) => i * squareWidth + i * this.settings.squarePadding)
-                .attr("y", (d, i) => row * squareWidth + row * this.settings.squarePadding)
+                .attr("x", (d, i) => this.currentViewPort.xTop + i * squareWidth)
+                .attr("y", (d, i) => this.currentViewPort.yTop + row * squareWidth)
                 .attr("width", d => squareWidth)
                 .attr("height", d => squareWidth)
                 .attr("fill", d => interpolator(d.value))
@@ -361,9 +400,14 @@ export class Heatmap {
 
     private redrawRowTitles(vis: d3.Selection<SVGSVGElement, any, HTMLElement, any>) {
         let squareWidth = this.determineSquareWidth();
-        let textStart = squareWidth * this.columns.length + this.settings.squarePadding * (this.columns.length - 1) + this.settings.visualizationTextPadding;
+        let textStart = this.currentViewPort.xTop + squareWidth * this.columns.length + this.settings.visualizationTextPadding;
 
         let textCenter = Math.max((squareWidth - this.settings.fontSize) / 2, 0);
+
+        vis.selectAll(".row").remove();
+
+        // We should also determine which text items need to be drawn based on the height of the squares.
+
 
         vis.selectAll("svg")
             .data(this.rows)
@@ -372,17 +416,19 @@ export class Heatmap {
             .text(d => d.name)
             .attr("dominant-baseline", "hanging")
             .attr("x", textStart)
-            .attr("y", (d, i) => (squareWidth + this.settings.squarePadding) * i + textCenter)
-            .attr("class", (d, i) => `row-label-${this.rows[i].id}`)
+            .attr("y", (d, i) => this.currentViewPort.yTop + squareWidth * i + textCenter)
+            .attr("class", (d, i) => `row row-label-${this.rows[i].id}`)
             .append("title")
             .text(d => d.name);
     }
 
     private redrawColumnTitles(vis: d3.Selection<SVGSVGElement, any, HTMLElement, any>) {
         let squareWidth = this.determineSquareWidth();
-        let textStart = squareWidth * this.rows.length + this.settings.squarePadding * (this.rows.length - 1) + this.settings.visualizationTextPadding;
+        let textStart = this.currentViewPort.yTop + squareWidth * this.rows.length + this.settings.visualizationTextPadding;
 
         let textCenter = Math.max((squareWidth - this.settings.fontSize) / 2, 0);
+
+        vis.selectAll(".column").remove();
 
         vis.selectAll("svg")
             .data(this.columns)
@@ -390,10 +436,10 @@ export class Heatmap {
             .append("text")
             .text(d => d.name)
             .attr("text-anchor", "start")
-            .attr("x",(d, i) => (squareWidth + this.settings.squarePadding) * i + textCenter)
+            .attr("x",(d, i) => this.currentViewPort.xTop + squareWidth * i + textCenter)
             .attr("y", textStart)
-            .attr("transform", (d, i) => `rotate(90, ${(squareWidth + this.settings.squarePadding) * i + textCenter}, ${textStart})`)
-            .attr("class", (d, i) => `column-label-${this.columns[i].id}`)
+            .attr("transform", (d, i) => `rotate(90, ${this.currentViewPort.xTop + squareWidth * i + textCenter}, ${textStart})`)
+            .attr("class", (d, i) => `column column-label-${this.columns[i].id}`)
             .append("title")
             .text(d => d.name);
     }
