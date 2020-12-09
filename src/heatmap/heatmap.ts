@@ -1,3 +1,5 @@
+//@ts-nocheck
+
 import * as d3 from "d3";
 import {HeatmapSettings} from "./heatmapSettings";
 import UPGMAClusterer from "../cluster/UPGMAClusterer";
@@ -20,7 +22,7 @@ export class Heatmap {
     private columns: HeatmapElement[];
     private values: HeatmapValue[][];
 
-    private tooltip: d3.Selection<HTMLDivElement, {}, HTMLElement, any> | null = null;
+    private tooltip: d3.Selection<HTMLDivElement, any, HTMLElement, any> | null = null;
 
     private readonly MARGIN = {
         left: 0,
@@ -305,21 +307,38 @@ export class Heatmap {
         let height = this.rows.length * (squareWidth + this.settings.squarePadding) + this.settings.textHeight;
         let width = this.columns.length * (squareWidth + this.settings.squarePadding) + this.settings.textWidth;
 
-        let vis = d3.select("#" + this.element.id)
+        let vis;
+
+        const zoom = d3.zoom()
+            .extent([[0, 0], [width, height]])
+            .scaleExtent([1, 8])
+            .on("zoom", () => {
+                vis.attr("transform", d3.event.transform);
+            });
+
+        vis = d3.select("#" + this.element.id)
             .append("svg")
             .attr("xmlns", "http://www.w3.org/2000/svg")
             .attr("viewBox", `0 0 ${width + this.MARGIN.right + this.MARGIN.left} ${height + this.MARGIN.top + this.MARGIN.bottom}`)
             .attr("width", width + this.MARGIN.right + this.MARGIN.left)
             .attr("height", height + this.MARGIN.top + this.MARGIN.bottom)
             .style("font-family", "'Helvetica Neue', Helvetica, Arial, sans-serif")
-            .style("font-size", this.settings.fontSize);
+            .style("font-size", this.settings.fontSize)
+            .call(zoom)
+            .append("g");
 
         this.redrawGrid(vis);
         this.redrawRowTitles(vis);
         this.redrawColumnTitles(vis);
     }
 
-    private redrawGrid(vis: d3.Selection<SVGSVGElement, {}, HTMLElement, any>) {
+    // private zoomed() {
+    //     d3..attr("transform", `translate(${d3.event.translate})scale(${d3.event.scale})`);
+    //     console.log("Zoomed");
+    //     console.log(d3.event.transform);
+    // }
+
+    private redrawGrid(vis: d3.Selection<SVGSVGElement, any, HTMLElement, any>) {
         let squareWidth = this.determineSquareWidth();
         let interpolator = d3.interpolateLab(d3.lab("#EEEEEE"), d3.lab("#1565C0"));
 
@@ -340,7 +359,7 @@ export class Heatmap {
         }
     }
 
-    private redrawRowTitles(vis: d3.Selection<SVGSVGElement, {}, HTMLElement, any>) {
+    private redrawRowTitles(vis: d3.Selection<SVGSVGElement, any, HTMLElement, any>) {
         let squareWidth = this.determineSquareWidth();
         let textStart = squareWidth * this.columns.length + this.settings.squarePadding * (this.columns.length - 1) + this.settings.visualizationTextPadding;
 
@@ -359,7 +378,7 @@ export class Heatmap {
             .text(d => d.name);
     }
 
-    private redrawColumnTitles(vis: d3.Selection<SVGSVGElement, {}, HTMLElement, any>) {
+    private redrawColumnTitles(vis: d3.Selection<SVGSVGElement, any, HTMLElement, any>) {
         let squareWidth = this.determineSquareWidth();
         let textStart = squareWidth * this.rows.length + this.settings.squarePadding * (this.rows.length - 1) + this.settings.visualizationTextPadding;
 
