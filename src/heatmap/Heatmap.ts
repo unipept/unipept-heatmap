@@ -38,6 +38,8 @@ export class Heatmap {
     private textWidth: number;
     private textHeight: number;
 
+    private tooltip: d3.Selection<HTMLDivElement, unknown, HTMLElement, any> | null = null;
+
     private readonly MARGIN = {
         left: 0,
         right: 0,
@@ -64,9 +66,9 @@ export class Heatmap {
         this.values = preprocessor.preprocessValues(values);
         this.valuesPerColor = preprocessor.colorize(this.values);
 
-        // if (this.settings.enableTooltips) {
-        //     this.tooltip = this.initTooltip();
-        // }
+        if (this.settings.enableTooltips) {
+            this.tooltip = this.initTooltip();
+        }
 
         // Initialize the viewport with the default width and height of the visualization
         this.originalViewPort = {
@@ -87,12 +89,15 @@ export class Heatmap {
         this.visElement = d3.select("#" + this.element.id)
             .append("canvas")
             .attr("width", this.settings.width)
-            .attr("height", this.settings.height);
+            .attr("height", this.settings.height)
+            .on("mouseover", () => this.tooltipMove(d3.event))
+            .on("mousemove", () => this.tooltipMove(d3.event))
+            .on("mouseout", () => this.tooltipOut(d3.event));
         this.context = this.visElement.node()!.getContext("2d")!;
 
         const zoom = d3.zoom()
             .extent([[0, 0], [this.settings.width, this.settings.height]])
-            .scaleExtent([0.5, 12])
+            .scaleExtent([0.25, 12])
             .on("zoom", () => {
                 this.zoomed(d3.event.transform);
             });
@@ -435,7 +440,7 @@ export class Heatmap {
         const squareWidth = this.determineSquareWidth();
 
         // Per how many items should we display a text item? (padding is 8)
-        const stepSize: number = Math.max(Math.floor((this.settings.fontSize + 8) / squareWidth), 1);
+        const stepSize: number = Math.max(Math.floor((this.settings.fontSize + 12) / (squareWidth + this.settings.squarePadding)), 1);
 
         const textStart = this.computeTextStartX();
         const textCenter = Math.max((squareWidth - this.settings.fontSize) / 2, 0);
@@ -462,7 +467,7 @@ export class Heatmap {
         let squareWidth = this.determineSquareWidth();
 
         // Per how many items should we display a text item? (padding is 8)
-        let stepSize: number = Math.max(Math.floor((this.settings.fontSize + 8) / squareWidth), 1);
+        let stepSize: number = Math.max(Math.floor((this.settings.fontSize + 12) / (squareWidth + this.settings.squarePadding)), 1);
 
         let textStart = this.computeTextStartY();
         let textCenter = Math.max((squareWidth - this.settings.fontSize) / 2, 0);
@@ -500,44 +505,42 @@ export class Heatmap {
             .style("border-radius", "3px");
     }
 
-    private tooltipIn(d: HeatmapValue, i: number) {
-        // if (!this.settings.enableTooltips || this.tooltip == null || !d.rowId || !d.columnId) {
-        //     return;
-        // }
-        //
-        // if (!d.rowId || !d.columnId) {
-        //     throw "A value with an invalid rowId or columnId was encountered.";
-        // }
-        //
-        // // Find the row and column that belong to the given HeatmapValue. These are looked up by the id's contained in
-        // // the value.
-        // let row = this.rowMap.get(d.rowId);
-        // let column = this.columnMap.get(d.columnId);
-        //
-        // if (!row || !column) {
-        //     throw "A row or column with a specific ID does not exist.";
-        // }
-        //
-        // this.tooltip.html(this.settings.getTooltip(d, row, column))
-        //     .style("top", (d3.event.pageY - 5) + "px")
-        //     .style("left", (d3.event.pageX + 15) + "px")
-        //     .style("visibility", "visible");
+    private findRowAndColForPosition(x: number, y: number): [number, number] {
+        const currentX = x - this.currentViewPort.xTop;
+        const currentY = y - this.currentViewPort.yTop;
+
+        const squareWidth = this.determineSquareWidth();
+
+        const row = Math.floor(currentY / (squareWidth + this.settings.squarePadding));
+        const col = Math.floor(currentX / (squareWidth + this.settings.squarePadding));
+
+        return [row, col];
     }
 
-    private tooltipMove(d: HeatmapValue, i: number) {
-        // if (!this.settings.enableTooltips || !this.tooltip) {
-        //     return;
-        // }
-        //
-        // this.tooltip.style("top", (d3.event.pageY - 5) + "px")
-        //     .style("left", (d3.event.pageX + 15) + "px");
+    private tooltipMove(event: MouseEvent) {
+        if (!this.settings.enableTooltips || !this.tooltip) {
+            return;
+        }
+
+        // Find out which element is situated under the current mouse position.
+        const [row, col] = this.findRowAndColForPosition(event.clientX, event.clientY);
+
+        if (row < 0 || row >= this.rows.length || col < 0 || col >= this.columns.length) {
+            this.tooltipOut(event);
+            return;
+        }
+
+        this.tooltip.html(this.settings.getTooltip(this.values[row][col], this.rows[row], this.columns[col]))
+            .style("top", (event.clientY - 5) + "px")
+            .style("left", (event.clientX + 15) + "px")
+        .style("visibility", "visible");
     }
 
-    private tooltipOut(d: HeatmapValue, i: number) {
-        // if (!this.settings.enableTooltips || !this.tooltip) {
-        //     return;
-        // }
-        //
-        // this.tooltip.style("visibility", "hidden");
+    private tooltipOut(event: MouseEvent) {
+        if (!this.settings.enableTooltips || !this.tooltip) {
+            return;
+        }
+
+        this.tooltip.style("visibility", "hidden");
     }
 }
