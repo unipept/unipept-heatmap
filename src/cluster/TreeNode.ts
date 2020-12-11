@@ -1,4 +1,3 @@
-import {HeatmapElement, HeatmapValue} from "../heatmap/input";
 import ClusterElement from "./clusterElement";
 
 export default class TreeNode {

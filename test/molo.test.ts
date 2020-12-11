@@ -4,7 +4,7 @@ import UPGMAClusterer from "../src/cluster/UPGMAClusterer";
 import EuclidianDistanceMetric from "../src/metric/euclidianDistanceMetric";
 import TreeNode from "../src/cluster/treeNode";
 import Reorderer from "../src/reorder/reorderer";
-import MoloReorderer from "../src/reorder/moloReorderer";
+import MoloReorder from "../src/reorder/moloReorderer";
 import Utils from "./utils";
 
 let getExpectedSmallDendrogram = function() {
@@ -30,7 +30,7 @@ it('should correctly reorder dendrograms', () => {
     let clusterer = new UPGMAClusterer(new EuclidianDistanceMetric());
 
     let actualDendroRoot: TreeNode = clusterer.cluster(data);
-    let molo: Reorderer = new MoloReorderer();
+    let molo: Reorderer = new MoloReorder();
     let reorderedDendroRoot = molo.reorder(actualDendroRoot);
     let expectedDendroRoot = getExpectedSmallDendrogram();
 

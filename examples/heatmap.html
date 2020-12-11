@@ -9,53 +9,45 @@
         <!-- Visualizations -->
         <script src="../dist/bundle.js"></script>
         <script src="data/randomGenerator.js"></script>
+        <style>
+            body {
+                margin: 0;
+            }
+        </style>
     </head>
     <body>
         <div id="heatmap"></div>
-        <button id="cluster">Cluster!</button>
+<!--        <button id="cluster">Cluster!</button>-->
 
         <script>
-            const randomData = getRandomData(200, 200);
+            const amountOfRows = 50;
+            const amountOfColumns = 90;
+            const randomData = getRandomData(amountOfRows, amountOfColumns);
 
             const rows = [];
             const cols = [];
             const grid = [];
 
-            for (let i = 0; i < randomData.length; i++) {
-                rows.push({
-                    name: "Family " + i
-                });
+            for (let i = 0; i < amountOfRows; i++) {
+                rows.push("Family " + i);
+            }
 
-                const rowValues = [];
-
-                for (let j = 0; j < randomData[i].length; j++) {
-                    if (cols.length <= j) {
-                        cols.push({
-                            name: "Sample " + j
-                        });
-                    }
-
-                    rowValues.push({
-                        value: randomData[i][j]
-                    });
-                }
-
-                grid.push(rowValues);
+            for (let i = 0; i < amountOfColumns; i++) {
+                cols.push("Sample " + i);
             }
 
             const heatmapElement = document.getElementById("heatmap");
 
             if (heatmapElement) {
-                let heatmap = new Heatmap.Heatmap(heatmapElement, {
-                    rows,
-                    columns: cols,
-                    values: grid
+                let heatmap = new Heatmap.Heatmap(heatmapElement, randomData, rows, cols, {
+                    width: document.documentElement.clientWidth,
+                    height: document.documentElement.clientHeight
                 });
 
-                document.getElementById("cluster")
-                    .addEventListener("click", () => {
-                        heatmap.cluster();
-                    });
+                // document.getElementById("cluster")
+                //     .addEventListener("click", () => {
+                //         heatmap.cluster();
+                //     });
             }
 
             // d3.csv('data/random_data.csv')
