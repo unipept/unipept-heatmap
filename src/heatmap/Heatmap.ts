@@ -79,7 +79,6 @@ export class Heatmap {
         }
 
         this.pixelRatio = window.devicePixelRatio || 1;
-        console.log(this.pixelRatio);
 
         // Initialize the viewport with the default width and height of the visualization
         this.originalViewPort = {

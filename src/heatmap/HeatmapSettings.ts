@@ -1,6 +1,7 @@
 import Settings from "../settings";
 import { HeatmapFeature } from "./HeatmapFeature";
 import { HeatmapValue } from "./HeatmapValue";
+import { Transition } from "./../transition/Transition";
 let sanitizeHtml = require("sanitize-html");
 
 export class HeatmapSettings extends Settings {
@@ -33,10 +34,9 @@ export class HeatmapSettings extends Settings {
     highlightFontColor: string = "black";
 
     /***** FUNCTIONS *****/
-    // Default ease-in-ease-out transition
-    transition: (x: number) => number = (x: number) => {
-        return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
-    }
+    // Which transition should be used by the heatmap animations? Pass a function that takes a number in [0, 1] and
+    // that returns a number in [0, 1]
+    transition: (x: number) => number = Transition.easeInOutElastic;
 
     // Returns the html to use as tooltip for a cell. Is called with a HeatmapValue that represents the current cell
     // and the row and column objects associated with the highlighted cell as parameters. By default, the
