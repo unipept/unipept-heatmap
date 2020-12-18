@@ -31,7 +31,7 @@ export default class Preprocessor {
      * @return A two-dimensional grid of HeatmapValue objects.
      */
     preprocessValues(
-        data: number[][],
+        data: (number | HeatmapValue)[][],
         lowColor: string,
         highColor: string,
         colorValues: number
@@ -43,17 +43,21 @@ export default class Preprocessor {
         const quantizeScale = d3.scaleQuantize().domain([0, 1]).range(ticks);
 
         return Object.entries(data).map(([rowIdx, row]) => Object.entries(row).map(([colIdx, value]) => {
-            const quantizedValue = quantizeScale(value);
+            if (typeof value === "number") {
+                const quantizedValue = quantizeScale(value);
 
-            if (quantizedValue === undefined) {
-                throw new Error("Invalid heatmap value given: " + value);
-            }
+                if (quantizedValue === undefined) {
+                    throw new Error("Invalid heatmap value given: " + value);
+                }
 
-            return {
-                value,
-                rowId: Number.parseInt(rowIdx),
-                columnId: Number.parseInt(colIdx),
-                color: interpolator(quantizedValue)
+                return {
+                    value: value as number,
+                    rowId: Number.parseInt(rowIdx),
+                    columnId: Number.parseInt(colIdx),
+                    color: interpolator(quantizedValue)
+                };
+            } else {
+                return value;
             }
         }));
     }

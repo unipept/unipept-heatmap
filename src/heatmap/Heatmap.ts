@@ -50,7 +50,7 @@ export default class Heatmap {
 
     constructor(
         elementIdentifier: HTMLElement,
-        values: number[][],
+        values: (number | HeatmapValue)[][],
         rowLabels: string[],
         columnLabels: string[],
         options: HeatmapSettings = new HeatmapSettings()
