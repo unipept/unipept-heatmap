@@ -20,8 +20,8 @@
         <button id="cluster">Cluster!</button>
 
         <script>
-            const amountOfRows = 80;
-            const amountOfColumns = 130;
+            const amountOfRows = 20;
+            const amountOfColumns = 20;
             const randomData = getRandomData(amountOfRows, amountOfColumns);
 
             const rows = [];
@@ -40,8 +40,8 @@
 
             if (heatmapElement) {
                 let heatmap = new Heatmap.Heatmap(heatmapElement, randomData, rows, cols, {
-                    width: document.documentElement.clientWidth,
-                    height: document.documentElement.clientHeight - 100
+                    width: 500,
+                    height: 500
                 });
 
                 document.getElementById("cluster")

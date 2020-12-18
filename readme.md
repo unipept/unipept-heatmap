@@ -142,3 +142,21 @@ input before returning it, as this might lead to reflected XSS-attacks.**
 
 ### Transition
 This namespace provides a few different transitions that can be used to tweak the animations for this heatmap.
+
+#### easeInEaseOutCubic
+![Cubic ease in, ease out transition](docs/resources/easeInEaseOutCubic.gif)
+
+#### easeInCubic
+![Cubic ease in transition](docs/resources/easeInCubic.gif)
+
+#### easeOutCubic
+![Cubic ease out transition](docs/resources/easeOutCubic.gif)
+
+#### easeInEaseOutElastic
+![Elastic ease in, ease out transition](docs/resources/easeInEaseOutElastic.gif)
+
+#### easeInElastic
+![Elastic ease in transition](docs/resources/easeInElastic.gif)
+
+#### easeOutElastic
+![Elastic ease out transition](docs/resources/easeOutElastic.gif)
