@@ -5,11 +5,11 @@ Unipept visualizations project and will be merged with that repository in the fu
 ![Heatmap showcase](docs/resources/heatmap_showcase.png)
 
 A live example of this heatmap can be found on 
-[ObservableHQ](https://observablehq.com/@pverscha/unipept-heatmap-live-example).
+[ObservableHQ](https://observablehq.com/@pverscha/unipept-heatmap-v2-live-example).
 
 ## Features
 * Uses native Canvas to render the heatmap
-* Renders at native speed for heatmaps with up to 300 * 300 elements
+* Renders at maximum refresh rate for heatmaps with up to 300 * 300 elements
 * Zoomable and draggable
 * Supports clustering of the values to improve readability
 * Fully animated
