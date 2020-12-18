@@ -1,2 +1,2 @@
-export * from "./heatmap/heatmap";
-export * from "./heatmap/heatmapSettings";
+export * from "./heatmap";
+export * from "./transition";

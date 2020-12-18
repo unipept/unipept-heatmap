@@ -1,11 +1,11 @@
 import Settings from "../settings";
-import { HeatmapFeature } from "./HeatmapFeature";
-import { HeatmapValue } from "./HeatmapValue";
+import HeatmapFeature from "./HeatmapFeature";
+import HeatmapValue from "./HeatmapValue";
 import { Transition } from "./../transition/Transition";
 
 const sanitizeHtml = require("sanitize-html");
 
-export class HeatmapSettings extends Settings {
+export default class HeatmapSettings extends Settings {
     /**
      * The amount of pixels that can maximally be used for row labels when initially rendering the heatmap.
      */

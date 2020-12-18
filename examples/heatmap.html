@@ -21,7 +21,7 @@
 
         <script>
             const amountOfRows = 50;
-            const amountOfColumns = 90;
+            const amountOfColumns = 130;
             const randomData = getRandomData(amountOfRows, amountOfColumns);
 
             const rows = [];
@@ -42,8 +42,8 @@
                 let heatmap = new Heatmap.Heatmap(heatmapElement, randomData, rows, cols, {
                     width: document.documentElement.clientWidth,
                     height: 800,
-                    minColor: "#ffebee",
-                    maxColor: "#b71c1c"
+                    transition: Heatmap.Transition.easeInOutElastic,
+                    animationDuration: 4000
                 });
 
                 document.getElementById("cluster")
