@@ -607,7 +607,9 @@ export default class Heatmap {
 
     private tooltipMove(event: MouseEvent) {
         // Find out which element is situated under the current mouse position.
-        const [row, col] = this.findRowAndColForPosition(event.clientX, event.clientY);
+        // @ts-ignore
+        const rect = event.target.getBoundingClientRect();
+        const [row, col] = this.findRowAndColForPosition(event.clientX - rect.left, event.clientY - rect.top);
 
         if (row < 0 || row >= this.rows.length || col < 0 || col >= this.columns.length) {
             if (this.settings.enableTooltips && this.tooltip) {
