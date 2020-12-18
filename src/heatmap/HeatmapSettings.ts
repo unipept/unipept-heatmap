@@ -2,45 +2,110 @@ import Settings from "../settings";
 import { HeatmapFeature } from "./HeatmapFeature";
 import { HeatmapValue } from "./HeatmapValue";
 import { Transition } from "./../transition/Transition";
-let sanitizeHtml = require("sanitize-html");
+
+const sanitizeHtml = require("sanitize-html");
 
 export class HeatmapSettings extends Settings {
-    /***** VALUES *****/
-    // Amount of pixels that are allowed to be occupied by the labels of the rows in the initial heatmap position
+    /**
+     * The amount of pixels that can maximally be used for row labels when initially rendering the heatmap.
+     */
     initialTextWidth: number = 100;
 
-    // Amount of pixels that are allowed to be occupied by the labels of the columns in the initial heatmap position
+    /**
+     * The amount of pixels that can maximally be used for column labels when initially rendering the heatmap.
+     */
     initialTextHeight: number = 100;
 
-    // Space between the squares in the grid (0 for no padding)
+    /**
+     * Padding between squares in the heatmap grid (in pixels). Set to 0 for no padding.
+     */
     squarePadding: number = 2;
 
-    // Space between the visualization grid itself and rendering the labels (in pixels). This space is applied to both
-    // the rows and columns labels.
-    visualizationTextPadding = 5;
+    /**
+     * Padding between the visualization and the labels (in pixels). This padding is applied to both the row and
+     * column labels.
+     */
+    visualizationTextPadding = 4;
 
-    // Size of text used in the visualization (for row and column labels)
+    /**
+     * Font size for labels, when current label is not highlighted. Size must be given in pixels.
+     */
     fontSize: number = 14;
 
-    className = 'heatmap';
+    /**
+     * Color of label text, when label is not highlighted. Value should be a valid HTML color string (hexadecimal).
+     */
+    labelColor: string = "#404040";
 
-    // Total speed of the reordering animations used in this visualization, should be given in milliseconds (ms).
-    animationSpeed: number = 2000;
-
-    // Should we highlight the current row and column over which the cursor is currently hovering?
+    /**
+     * Should the row, column and square that are currently being hovered by the mouse cursor be highlighted?
+     */
     highlightSelection: boolean = true;
 
+    /**
+     * Font size for labels, when current label is highlighted. Size must be given in pixels.
+     */
     highlightFontSize: number = 16;
+
+    /**
+     * Color of label text, when label is highlighted. Value should be a valid HTML color string (hexadecimal).
+     */
     highlightFontColor: string = "black";
 
-    /***** FUNCTIONS *****/
-    // Which transition should be used by the heatmap animations? Pass a function that takes a number in [0, 1] and
-    // that returns a number in [0, 1]
-    transition: (x: number) => number = Transition.easeInOutElastic;
+    /**
+     * Classname that's internally used for the object.
+     */
+    className: string = 'heatmap';
 
-    // Returns the html to use as tooltip for a cell. Is called with a HeatmapValue that represents the current cell
-    // and the row and column objects associated with the highlighted cell as parameters. By default, the
-    // result of getTooltipTitle is used in a header and getTooltipText is used in a paragraph tag.
+    /**
+     * Determines if animations should be rendered when rows and columns are reordered.
+     */
+    animationsEnabled: boolean = true;
+
+    /**
+     * Determines how long animations should take, if they are enabled. Time should be given in milliseconds.
+     */
+    animationDuration: number = 2000;
+
+    /**
+     * Transition effect that should be applied to the reordering animation. Pass a predefined function from the
+     * Transition namespace, or provide your own function that maps a value from [0, 1] to [0, 1].
+     *
+     * @param x A value from the interval [0, 1].
+     * @return A value in the interval [0, 1] that adheres to a specific transition's rules.
+     */
+    transition: (x: number) => number = Transition.easeInEaseOutCubic;
+
+    /**
+     * Color value that should be used to render squares with the lowest possible value. All other values between min
+     * and max value will be colored with a color value interpolated between minColor and maxColor. Value should be a
+     * valid HTML color string.
+     */
+    minColor: string = "#EEEEEE";
+
+    /**
+     * Color value that should be used to render squares with the highest possible value. All other values between min
+     * and max value will be colored with a color value interpolated between minColor and maxColor. Value should be a
+     * valid HTML color string.
+     */
+    maxColor: string = "#1565C0";
+
+    /**
+     * How many distinct colors between minColor and maxColor should be used for the heatmap (this value thus determines
+     * the size of the color palette). Increasing this value will decrease the heatmap's performance.
+     */
+    colorBuckets: number = 50;
+
+    /**
+     * Returns the html to use as tooltip for a cell. Is called with a HeatmapValue that represents the current cell and
+     * the row and column objects associated with the highlighted cell as parameters. The result of getTooltipTitle is
+     * used for the header and getTooltipText is used for the body of the tooltip by default.
+     *
+     * @param value Current value for the square that's being hovered by the mouse cursor.
+     * @param row Row index that's currently being hovered by the mouse cursor.
+     * @param column Column index that's currently being hovered by the mouse cursor.
+     * @return A valid HTML-string that represents a tooltip.
+     */
     getTooltip: (
         value: HeatmapValue,
         row: HeatmapFeature,
@@ -74,6 +139,17 @@ export class HeatmapSettings extends Settings {
         `
     };
 
+    /**
+     * Returns text that's being used for the title of a tooltip. This tooltip provides information to the user about
+     * the value that's currently hovered by the mouse cursor.
+     *
+     * This function returns the row and column title of the currently selected value by default.
+     *
+     * @param value Current value for the square that's being hovered by the mouse cursor.
+     * @param row Row index that's currently being hovered by the mouse cursor.
+     * @param column Column index that's currently being hovered by the mouse cursor.
+     * @return Text content that should be used for the header of the tooltip.
+     */
     getTooltipTitle: (
         value: HeatmapValue,
         row: HeatmapFeature,
@@ -82,7 +158,15 @@ export class HeatmapSettings extends Settings {
         return sanitizeHtml(`${column.name ? column.name : ''}${column.name ? ' and ' : ''}${row.name ? row.name : ''}`);
     };
 
-    // Text that's displayed inside a tooltip. This is equal to the current cell's value by default.
+    /**
+     * Returns text that's being used for the body of a tooltip. This tooltip provides information to the user about
+     * the value that's currently hovered by the mouse cursor.
+     *
+     * This function returns the currently selected value (as a percentage) by default.
+     *
+     * @param x Current value for the square that's being hovered by the mouse cursor.
+     * @return Text content that should be used for the header of the tooltip.
+     */
     getTooltipText: (x: HeatmapValue) => string = (x: HeatmapValue) => {
         return sanitizeHtml(`Similarity: ${(x.value * 100).toFixed(2)}%`);
     };

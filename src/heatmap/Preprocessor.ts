@@ -21,14 +21,22 @@ export default class Preprocessor {
 
     /**
      * Convert the data grid consisting of numbers into valid HeatmapValue-objects. The order from the input grid is
-     * retained in the output grid.
+     * retained in the output grid. A color will be computed for each distinct value. Only a specific amount of colors
+     * will be generated, as determined by the colorValues parameter.
      *
      * @param data A grid of numbers that needs to be converted to proper HeatmapValue-objects.
+     * @param lowColor Color value that should be used for low values
+     * @param highColor Color value that should be used for high values
      * @param colorValues How many discrete color values should be generated?
      * @return A two-dimensional grid of HeatmapValue objects.
      */
-    preprocessValues(data: number[][], colorValues: number = 50): HeatmapValue[][] {
-        const interpolator = d3.interpolateLab(d3.lab("#EEEEEE"), d3.lab("#1565C0"));
+    preprocessValues(
+        data: number[][],
+        lowColor: string,
+        highColor: string,
+        colorValues: number
+    ): HeatmapValue[][] {
+        const interpolator = d3.interpolateLab(d3.lab(lowColor), d3.lab(highColor));
 
         const x = d3.scaleLinear().domain([0, 1]).range([0, 1]);
         const ticks = x.ticks(colorValues);
@@ -51,14 +59,12 @@ export default class Preprocessor {
     }
 
     /**
-     * Determine the color for each value of the given grid and order all values in a map, per color. Only a specific
-     * amount of colors will be generated.
+     * Order all values in a map, per color.
      *
      * @param values All grid values for which we should determine a color.
-     * @param colorValues How many discrete color values should be generated?
      * @return A mapping between an HTML-color value and a list of [row, col] positions.
      */
-    colorize(values: HeatmapValue[][], colorValues: number = 50): Map<string, [number, number][]> {
+    orderPerColor(values: HeatmapValue[][]): Map<string, [number, number][]> {
         const output = new Map<string, [number, number][]>();
 
         for (let rowIdx = 0; rowIdx < values.length; rowIdx++) {

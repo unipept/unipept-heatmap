@@ -48,13 +48,6 @@ export class Heatmap {
 
     private pixelRatio: number;
 
-    private readonly MARGIN = {
-        left: 0,
-        right: 0,
-        top: 0,
-        bottom: 0
-    };
-
     constructor(
         elementIdentifier: HTMLElement,
         values: number[][],
@@ -71,8 +64,13 @@ export class Heatmap {
         this.rows = preprocessor.preprocessFeatures(rowLabels);
         this.columns = preprocessor.preprocessFeatures(columnLabels);
 
-        this.values = preprocessor.preprocessValues(values);
-        this.valuesPerColor = preprocessor.colorize(this.values);
+        this.values = preprocessor.preprocessValues(
+            values,
+            this.settings.minColor,
+            this.settings.maxColor,
+            this.settings.colorBuckets
+        );
+        this.valuesPerColor = preprocessor.orderPerColor(this.values);
 
         if (this.settings.enableTooltips) {
             this.tooltip = this.initTooltip();
@@ -143,13 +141,9 @@ export class Heatmap {
 
         let molo: Reorderer = new MoloReorderer();
 
-        //@ts-ignore
-        let rowOrder: number[] = Array.apply(null, {length: this.rows.length}).map(
-            Number.call,
-            Number
-        );
-
+        let rowOrder: number[] = Array.from(Array(this.rows.length).keys())
         let inverseRowOrder: number[] = new Array(rowOrder.length);
+
         if (toCluster === "all" || toCluster === "rows") {
             // Create a new ClusterElement for every row that exists. This ClusterElement keeps track of an array of
             // numbers that correspond to a row's values.
@@ -158,22 +152,15 @@ export class Heatmap {
             );
 
             // Now we perform a depth first search on the result in order to find the order of the values
-            rowOrder = this.determineOrder(
-                molo.reorder(clusterer.cluster(rowElements)),
-                (id: number) => id
-            );
+            rowOrder = this.determineOrder(molo.reorder(clusterer.cluster(rowElements)));
             for (const [idx, row] of Object.entries(rowOrder)) {
                 inverseRowOrder[row] = Number.parseInt(idx);
             }
         }
 
-        //@ts-ignore
-        let columnOrder: number[] = Array.apply(null, {length: this.rows.length}).map(
-            Number.call,
-            Number
-        );
-
+        let columnOrder: number[] = Array.from(Array(this.columns.length).keys())
         let inverseColumnOrder: number[] = new Array(columnOrder.length);
+
         if (toCluster === "all" || toCluster === "columns") {
             // Create a new ClusterElement for every column that exists.
             let columnElements: ClusterElement[] = this.columns.map(
@@ -182,37 +169,42 @@ export class Heatmap {
                     el.idx!
                 )
             );
-            columnOrder = this.determineOrder(clusterer.cluster(columnElements), (id: number) => id);
+            columnOrder = this.determineOrder(clusterer.cluster(columnElements));
             for (const [idx, col] of Object.entries(columnOrder)) {
                 inverseColumnOrder[col] = Number.parseInt(idx);
             }
         }
 
-        const animationDuration = this.settings.animationSpeed / 2;
+        const animationDuration = this.settings.animationsEnabled ? this.settings.animationDuration / 2 : 0;
+
+        // Function that animates the movement of the rows and columns
+        const createAnimator = (rowOrder: number[], columnOrder: number[]) => {
+            return new Promise<void>((resolve) => {
+                let animationStart: number;
+
+                const animateRows = (timestamp: number) => {
+                    if (animationStart === undefined) {
+                        animationStart = timestamp;
+                    }
+                    const elapsed = timestamp - animationStart;
+
+                    const animationStep = this.settings.transition(elapsed / animationDuration);
+                    this.redraw(rowOrder, columnOrder, animationStep);
+
+                    if (elapsed < animationDuration) {
+                        requestAnimationFrame(animateRows);
+                    } else {
+                        resolve();
+                    }
+                };
+
+                requestAnimationFrame(animateRows);
+            });
+        }
 
         // First animate rows
-        await new Promise<void>((resolve) => {
-            let animationStart: number;
-            const columnIdentity = Array.from(Array(this.columns.length).keys())
-
-            const animateRows = (timestamp: number) => {
-                if (animationStart === undefined) {
-                    animationStart = timestamp;
-                }
-                const elapsed = timestamp - animationStart;
-
-                const animationStep = this.settings.transition(elapsed / animationDuration);
-                this.redraw(inverseRowOrder, columnIdentity, animationStep);
-
-                if (elapsed < animationDuration) {
-                    requestAnimationFrame(animateRows);
-                } else {
-                    resolve();
-                }
-            };
-
-            requestAnimationFrame(animateRows);
-        });
+        const columnIdentity = Array.from(Array(this.columns.length).keys());
+        await createAnimator(inverseRowOrder, columnIdentity);
 
         let newValues = [];
         // Swap rows into the correct position
@@ -230,34 +222,14 @@ export class Heatmap {
 
         this.rows = newRowTitles;
         this.values = newValues;
-        this.valuesPerColor = preprocessor.colorize(this.values);
+        this.valuesPerColor = preprocessor.orderPerColor(this.values);
 
-        await new Promise<void>((resolve) => {
-            let animationStart: number;
-            const rowIdentity = Array.from(Array(this.rows.length).keys());
-
-            const animateColumns = (timestamp: number) => {
-                if (animationStart === undefined) {
-                    animationStart = timestamp;
-                }
-                const elapsed = timestamp - animationStart;
-
-                const animationStep = this.settings.transition(elapsed / animationDuration);
-                this.redraw(rowIdentity, inverseColumnOrder, animationStep);
-
-                if (elapsed < animationDuration) {
-                    requestAnimationFrame(animateColumns);
-                } else {
-                    resolve();
-                }
-            };
-
-            requestAnimationFrame(animateColumns);
-        });
+        // Then animate columns
+        const rowIdentity = Array.from(Array(this.rows.length).keys());
+        await createAnimator(rowIdentity, inverseColumnOrder);
 
         newValues = [];
         // Swap columns
-        const rowIdentity = Array.from(Array(this.rows.length).keys());
         for (const row of rowIdentity) {
             let newRow: HeatmapValue[] = [];
             for (const column of columnOrder) {
@@ -274,7 +246,7 @@ export class Heatmap {
 
         this.columns = newColumnTitles;
         this.values = newValues;
-        this.valuesPerColor = preprocessor.colorize(this.values);
+        this.valuesPerColor = preprocessor.orderPerColor(this.values);
 
         this.redraw();
     }
@@ -299,22 +271,20 @@ export class Heatmap {
      * Extracts a linear order from a dendrogram by following all branches up to leaves in a depth-first ordering.
      *
      * @param treeNode Root of a dendrogram for which a linear leaf ordering needs to be extracted.
-     * @param idxExtractor Function that, given an HeatmapElement's id is able to retrieve an index associated with that
-     *        element.
      */
-    private determineOrder(treeNode: TreeNode, idxExtractor: (x: number) => number): number[] {
+    private determineOrder(treeNode: TreeNode): number[] {
         if (!treeNode.leftChild && !treeNode.rightChild) {
-            return [idxExtractor(treeNode.values[0].id)];
+            return [treeNode.values[0].id];
         }
 
         let left: number[] = [];
         if (treeNode.leftChild) {
-            left = this.determineOrder(treeNode.leftChild, idxExtractor);
+            left = this.determineOrder(treeNode.leftChild);
         }
 
         let right: number[] = [];
         if (treeNode.rightChild) {
-            right = this.determineOrder(treeNode.rightChild, idxExtractor);
+            right = this.determineOrder(treeNode.rightChild);
         }
 
         return left.concat(right);
@@ -466,7 +436,7 @@ export class Heatmap {
                 if (this.settings.highlightSelection && row == this.highlightedRow && col == this.highlightedColumn) {
                     // Add a highlight border around the currently selected square
                     this.context.save();
-                    this.context.fillStyle = "#1565C0";
+                    this.context.fillStyle = this.settings.maxColor;
                     this.context.fillRect(
                         xTopCurrent - this.settings.squarePadding,
                         yTopCurrent - this.settings.squarePadding,
@@ -530,7 +500,7 @@ export class Heatmap {
 
         this.context.save();
 
-        this.context.fillStyle = "#404040";
+        this.context.fillStyle = this.settings.labelColor;
         this.context.textBaseline = "top";
         this.context.textAlign = "start"
         this.context.font = `${this.settings.fontSize}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;

@@ -42,7 +42,8 @@
                 let heatmap = new Heatmap.Heatmap(heatmapElement, randomData, rows, cols, {
                     width: document.documentElement.clientWidth,
                     height: 800,
-                    animationSpeed: 4000
+                    minColor: "#ffebee",
+                    maxColor: "#b71c1c"
                 });
 
                 document.getElementById("cluster")
