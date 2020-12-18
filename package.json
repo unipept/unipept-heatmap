@@ -6,9 +6,11 @@
   "typings": "dist/index.d.ts",
   "readme": "readme.md",
   "dependencies": {
-    "@types/sanitize-html": "^1.27.0",
     "@types/d3": "^5.16.0",
+    "@types/sanitize-html": "^1.27.0",
+    "core-js": "^3.8.1",
     "d3": "^5.16.0",
+    "regenerator-runtime": "^0.13.7",
     "sanitize-html": "^1.27.5"
   },
   "devDependencies": {

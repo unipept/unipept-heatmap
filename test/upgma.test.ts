@@ -33,7 +33,7 @@ let getExpectedLargeDendrogram = function() {
 it('should produce dendrograms with correct topology', () => {
     let dataGenerator = new TestDataGenerator();
     let originalData: number[][] = dataGenerator.getSmall2DDataSet();
-    let data: ClusterElement[] = originalData.map((row: number[]) => new ClusterElement(row, "0"));
+    let data: ClusterElement[] = originalData.map((row: number[]) => new ClusterElement(row, 0));
     let clusterer = new UPGMAClusterer(new EuclidianDistanceMetric());
 
     let actualDendroRoot: TreeNode = clusterer.cluster(data);

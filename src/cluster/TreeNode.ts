@@ -9,14 +9,14 @@ export default class TreeNode {
     // Keep track of which ID's are already assigned to TreeNode's.
     public static currentID = 0;
     // ID used for constructing graphs.
-    public readonly id: string;
+    public readonly id: number;
 
     constructor(leftChild: TreeNode | null, rightChild: TreeNode | null, values: ClusterElement[], height: number) {
         this._leftChild = leftChild;
         this._rightChild = rightChild;
         this.values = values;
         this.height = height;
-        this.id = TreeNode.currentID.toString();
+        this.id = TreeNode.currentID;
         TreeNode.currentID++;
     }
 
@@ -42,7 +42,7 @@ export default class TreeNode {
      *
      * @param: idExtractor Function that extract's the name from a given node's id.
      */
-    public toNewick(nameExtractor: (id: string) => string): string {
+    public toNewick(nameExtractor: (id: number) => string): string {
         let output: string = "";
 
         if (!this.leftChild && !this.rightChild) {
@@ -67,7 +67,7 @@ export default class TreeNode {
     /**
      * Convert this tree and all of it's children to the dot GraphViz-format.
      */
-    public toGraphViz(nameExtractor: (id: string) => string): string {
+    public toGraphViz(nameExtractor: (id: number) => string): string {
         let root: TreeNode | undefined = this;
 
         let output = 'digraph dendrogram {\n';

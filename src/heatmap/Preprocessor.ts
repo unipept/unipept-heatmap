@@ -24,14 +24,28 @@ export default class Preprocessor {
      * retained in the output grid.
      *
      * @param data A grid of numbers that needs to be converted to proper HeatmapValue-objects.
+     * @param colorValues How many discrete color values should be generated?
      * @return A two-dimensional grid of HeatmapValue objects.
      */
-    preprocessValues(data: number[][]): HeatmapValue[][] {
+    preprocessValues(data: number[][], colorValues: number = 50): HeatmapValue[][] {
+        const interpolator = d3.interpolateLab(d3.lab("#EEEEEE"), d3.lab("#1565C0"));
+
+        const x = d3.scaleLinear().domain([0, 1]).range([0, 1]);
+        const ticks = x.ticks(colorValues);
+        const quantizeScale = d3.scaleQuantize().domain([0, 1]).range(ticks);
+
         return Object.entries(data).map(([rowIdx, row]) => Object.entries(row).map(([colIdx, value]) => {
+            const quantizedValue = quantizeScale(value);
+
+            if (quantizedValue === undefined) {
+                throw new Error("Invalid heatmap value given: " + value);
+            }
+
             return {
                 value,
                 rowId: Number.parseInt(rowIdx),
-                columnId: Number.parseInt(colIdx)
+                columnId: Number.parseInt(colIdx),
+                color: interpolator(quantizedValue)
             }
         }));
     }
@@ -47,21 +61,9 @@ export default class Preprocessor {
     colorize(values: HeatmapValue[][], colorValues: number = 50): Map<string, [number, number][]> {
         const output = new Map<string, [number, number][]>();
 
-        const interpolator = d3.interpolateLab(d3.lab("#EEEEEE"), d3.lab("#1565C0"));
-
-        const x = d3.scaleLinear().domain([0, 1]).range([0, 1]);
-        const ticks = x.ticks(colorValues);
-        const quantizeScale = d3.scaleQuantize().domain([0, 1]).range(ticks);
-
         for (let rowIdx = 0; rowIdx < values.length; rowIdx++) {
             for (let colIdx = 0; colIdx < values[rowIdx].length; colIdx++) {
-                const quantizedValue = quantizeScale(values[rowIdx][colIdx].value);
-
-                if (quantizedValue === undefined) {
-                    throw new Error("Invalid heatmap value given: " + values[rowIdx][colIdx].value);
-                }
-
-                const colorString = interpolator(quantizedValue);
+                const colorString = values[rowIdx][colIdx].color;
 
                 if (!output.has(colorString)) {
                     output.set(colorString, []);

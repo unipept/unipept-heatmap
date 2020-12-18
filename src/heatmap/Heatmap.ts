@@ -1,14 +1,17 @@
 import * as d3 from "d3";
-import { HeatmapSettings } from "./heatmapSettings";
+import { HeatmapSettings } from "./HeatmapSettings";
 import UPGMAClusterer from "../cluster/UPGMAClusterer";
-import EuclidianDistanceMetric from "../metric/euclidianDistanceMetric";
-import ClusterElement from "../cluster/clusterElement";
-import TreeNode from "../cluster/treeNode";
-import Reorderer from "../reorder/reorderer";
-import MoloReorder from "../reorder/moloReorderer";
+import EuclidianDistanceMetric from "../metric/EuclidianDistanceMetric";
+import ClusterElement from "../cluster/ClusterElement";
+import TreeNode from "../cluster/TreeNode";
+import Reorderer from "../reorder/Reorderer";
+import MoloReorderer from "../reorder/MoloReorderer";
 import { HeatmapFeature } from "./HeatmapFeature";
 import { HeatmapValue } from "./HeatmapValue";
 import Preprocessor from "./Preprocessor";
+
+import "core-js/stable";
+import "regenerator-runtime/runtime";
 
 type ViewPort = {
     xTop: number,
@@ -40,6 +43,11 @@ export class Heatmap {
 
     private tooltip: d3.Selection<HTMLDivElement, unknown, HTMLElement, any> | null = null;
 
+    private highlightedRow: number = -1;
+    private highlightedColumn: number = -1;
+
+    private pixelRatio: number;
+
     private readonly MARGIN = {
         left: 0,
         right: 0,
@@ -70,6 +78,9 @@ export class Heatmap {
             this.tooltip = this.initTooltip();
         }
 
+        this.pixelRatio = window.devicePixelRatio || 1;
+        console.log(this.pixelRatio);
+
         // Initialize the viewport with the default width and height of the visualization
         this.originalViewPort = {
             xTop: 0,
@@ -88,12 +99,14 @@ export class Heatmap {
 
         this.visElement = d3.select("#" + this.element.id)
             .append("canvas")
-            .attr("width", this.settings.width)
-            .attr("height", this.settings.height)
+            .attr("width", this.pixelRatio * this.settings.width)
+            .attr("height", this.pixelRatio * this.settings.height)
+            .attr("style", `width: ${this.settings.width}px; height: ${this.settings.height}px`)
             .on("mouseover", () => this.tooltipMove(d3.event))
             .on("mousemove", () => this.tooltipMove(d3.event))
-            .on("mouseout", () => this.tooltipOut(d3.event));
+            .on("mouseout", () => this.tooltipMove(d3.event));
         this.context = this.visElement.node()!.getContext("2d")!;
+        this.context.scale(this.pixelRatio, this.pixelRatio);
 
         const zoom = d3.zoom()
             .extent([[0, 0], [this.settings.width, this.settings.height]])
@@ -126,90 +139,145 @@ export class Heatmap {
      * should be performed. "Columns" denotes that clustering should only be clustered on the columns only. "Rows"
      * denotes that the clustering is performed on the rows only.
      */
-    public cluster(toCluster: "all" | "columns" | "rows" | "none" = "all") {
-        // let clusterer = new UPGMAClusterer(new EuclidianDistanceMetric());
-        //
-        // let molo: Reorderer = new MoloReorderer();
-        //
-        // //@ts-ignore
-        // let rowOrder: number[] = Array.apply(null, {length: this.rows.length}).map(Number.call, Number);
-        // if (toCluster === "all" || toCluster === "rows") {
-        //     // Create a new ClusterElement for every row that exists. This ClusterElement keeps track of an array of numbers that correspond to a row's values.
-        //     let rowElements: ClusterElement[] = this.rows.map((el, idx) => new ClusterElement(this.values[idx].filter(val => val.rowId == el.id).map(x => x.value), el.id!));
-        //     // Now we perform a depth first search on the result in order to find the order of the values
-        //     rowOrder = this.determineOrder(molo.reorder(clusterer.cluster(rowElements)), (id: string) => this.rowMap.get(id)!.idx!);
-        // }
-        //
-        // //@ts-ignore
-        // let columnOrder: number[] = Array.apply(null, {length: this.rows.length}).map(Number.call, Number);
-        // if (toCluster === "all" || toCluster === "columns") {
-        //     // Create a new ClusterElement for every column that exists.
-        //     let columnElements: ClusterElement[] = this.columns.map((el, idx) => new ClusterElement(this.values.map(col => col[idx].value), el.id!));
-        //     columnOrder = this.determineOrder(clusterer.cluster(columnElements), (id: string) => this.columnMap.get(id)!.idx!);
-        // }
-        //
-        // let newValues = [];
-        // // Swap rows and columns
-        // for (let row of rowOrder) {
-        //     let newRow: HeatmapValue[] = [];
-        //     for (let column of columnOrder) {
-        //         newRow.push(this.values[row][column]);
-        //     }
-        //     newValues.push(newRow);
-        // }
-        // this.values = newValues;
-        //
-        // let squareWidth = this.determineSquareWidth();
-        // let textCenter = Math.max((squareWidth - this.settings.fontSize) / 2, 0);
-        //
-        // // First animate the rows
-        // for (let i = 0; i < this.rows.length; i++) {
-        //     let newLocation = rowOrder.indexOf(i);
-        //     let row = this.rows[i];
-        //
-        //     d3.selectAll(".row-" + row.id)
-        //         .transition()
-        //         .duration(this.settings.animationSpeed / 2)
-        //         .attr("y", (d) => newLocation * squareWidth + newLocation * this.settings.squarePadding);
-        //
-        //     d3.select(".row-label-" + row.id)
-        //         .transition()
-        //         .duration(this.settings.animationSpeed / 2)
-        //         .attr("y",  (d) => (squareWidth + this.settings.squarePadding) * newLocation + textCenter);
-        // }
-        //
-        // let textStart = squareWidth * this.rows.length + this.settings.squarePadding * (this.rows.length - 1) + this.settings.visualizationTextPadding;
-        //
-        // // Then animate the columns in the same way
-        // for (let i = 0; i < this.columns.length; i++) {
-        //     let newLocation = columnOrder.indexOf(i);
-        //     let column = this.columns[i];
-        //
-        //     d3.selectAll(".column-" + column.id)
-        //         .transition()
-        //         .delay(toCluster === "all" ? this.settings.animationSpeed / 2 : 0)
-        //         .duration(this.settings.animationSpeed / 2)
-        //         .attr("x", (d) => newLocation * squareWidth + newLocation * this.settings.squarePadding);
-        //
-        //     d3.selectAll(".column-label-" + column.id)
-        //         .transition()
-        //         .delay(toCluster === "all" ? this.settings.animationSpeed / 2 : 0)
-        //         .duration(this.settings.animationSpeed / 2)
-        //         .attr("x", (d) => (squareWidth + this.settings.squarePadding) * newLocation + textCenter)
-        //         .attr("transform", (d) => `rotate(90, ${(squareWidth + this.settings.squarePadding) * newLocation + textCenter}, ${textStart})`);
-        // }
-        //
-        // let newRows: HeatmapElement[] = [];
-        // for (let rowIdx of rowOrder) {
-        //     newRows.push(this.rows[rowIdx]);
-        // }
-        // this.rows = newRows;
-        //
-        // let newColumns: HeatmapElement[] = [];
-        // for (let colIdx of columnOrder) {
-        //     newColumns.push(this.columns[colIdx]);
-        // }
-        // this.columns = newColumns;
+    public async cluster(toCluster: "all" | "columns" | "rows" | "none" = "all") {
+        let clusterer = new UPGMAClusterer(new EuclidianDistanceMetric());
+
+        let molo: Reorderer = new MoloReorderer();
+
+        //@ts-ignore
+        let rowOrder: number[] = Array.apply(null, {length: this.rows.length}).map(
+            Number.call,
+            Number
+        );
+
+        let inverseRowOrder: number[] = new Array(rowOrder.length);
+        if (toCluster === "all" || toCluster === "rows") {
+            // Create a new ClusterElement for every row that exists. This ClusterElement keeps track of an array of
+            // numbers that correspond to a row's values.
+            let rowElements: ClusterElement[] = this.rows.map((el, idx) => new ClusterElement(
+                this.values[idx].filter(val => val.rowId == el.idx).map(x => x.value), el.idx!)
+            );
+
+            // Now we perform a depth first search on the result in order to find the order of the values
+            rowOrder = this.determineOrder(
+                molo.reorder(clusterer.cluster(rowElements)),
+                (id: number) => id
+            );
+            for (const [idx, row] of Object.entries(rowOrder)) {
+                inverseRowOrder[row] = Number.parseInt(idx);
+            }
+        }
+
+        //@ts-ignore
+        let columnOrder: number[] = Array.apply(null, {length: this.rows.length}).map(
+            Number.call,
+            Number
+        );
+
+        let inverseColumnOrder: number[] = new Array(columnOrder.length);
+        if (toCluster === "all" || toCluster === "columns") {
+            // Create a new ClusterElement for every column that exists.
+            let columnElements: ClusterElement[] = this.columns.map(
+                (el, idx) => new ClusterElement(
+                    this.values.map(col => col[idx].value),
+                    el.idx!
+                )
+            );
+            columnOrder = this.determineOrder(clusterer.cluster(columnElements), (id: number) => id);
+            for (const [idx, col] of Object.entries(columnOrder)) {
+                inverseColumnOrder[col] = Number.parseInt(idx);
+            }
+        }
+
+        const animationDuration = this.settings.animationSpeed / 2;
+
+        // First animate rows
+        await new Promise<void>((resolve) => {
+            let animationStart: number;
+            const columnIdentity = Array.from(Array(this.columns.length).keys())
+
+            const animateRows = (timestamp: number) => {
+                if (animationStart === undefined) {
+                    animationStart = timestamp;
+                }
+                const elapsed = timestamp - animationStart;
+
+                const animationStep = this.settings.transition(elapsed / animationDuration);
+                this.redraw(inverseRowOrder, columnIdentity, animationStep);
+
+                if (elapsed < animationDuration) {
+                    requestAnimationFrame(animateRows);
+                } else {
+                    resolve();
+                }
+            };
+
+            requestAnimationFrame(animateRows);
+        });
+
+        let newValues = [];
+        // Swap rows into the correct position
+        for (const row of rowOrder) {
+            newValues.push(this.values[row]);
+        }
+
+        // Swap row titles
+        const newRowTitles = [];
+        for (const row of rowOrder) {
+            newRowTitles.push(this.rows[row]);
+        }
+
+        const preprocessor = new Preprocessor();
+
+        this.rows = newRowTitles;
+        this.values = newValues;
+        this.valuesPerColor = preprocessor.colorize(this.values);
+
+        await new Promise<void>((resolve) => {
+            let animationStart: number;
+            const rowIdentity = Array.from(Array(this.rows.length).keys());
+
+            const animateColumns = (timestamp: number) => {
+                if (animationStart === undefined) {
+                    animationStart = timestamp;
+                }
+                const elapsed = timestamp - animationStart;
+
+                const animationStep = this.settings.transition(elapsed / animationDuration);
+                this.redraw(rowIdentity, inverseColumnOrder, animationStep);
+
+                if (elapsed < animationDuration) {
+                    requestAnimationFrame(animateColumns);
+                } else {
+                    resolve();
+                }
+            };
+
+            requestAnimationFrame(animateColumns);
+        });
+
+        newValues = [];
+        // Swap columns
+        const rowIdentity = Array.from(Array(this.rows.length).keys());
+        for (const row of rowIdentity) {
+            let newRow: HeatmapValue[] = [];
+            for (const column of columnOrder) {
+                newRow.push(this.values[row][column]);
+            }
+            newValues.push(newRow);
+        }
+
+        // Swap column titles
+        const newColumnTitles = [];
+        for (const col of columnOrder) {
+            newColumnTitles.push(this.columns[col]);
+        }
+
+        this.columns = newColumnTitles;
+        this.values = newValues;
+        this.valuesPerColor = preprocessor.colorize(this.values);
+
+        this.redraw();
     }
 
     public setFullScreen(fullscreen: boolean) {
@@ -235,7 +303,7 @@ export class Heatmap {
      * @param idxExtractor Function that, given an HeatmapElement's id is able to retrieve an index associated with that
      *        element.
      */
-    private determineOrder(treeNode: TreeNode, idxExtractor: (x: string) => number): number[] {
+    private determineOrder(treeNode: TreeNode, idxExtractor: (x: number) => number): number[] {
         if (!treeNode.leftChild && !treeNode.rightChild) {
             return [idxExtractor(treeNode.values[0].id)];
         }
@@ -252,32 +320,6 @@ export class Heatmap {
 
         return left.concat(right);
     }
-
-    // /**
-    //  * Append all Heatmap-specific styling to the document to which we render this information.
-    //  */
-    // private initCSS() {
-    //     let elementClass = this.settings.className;
-    //
-    //     this.element.className += " " + elementClass;
-    //
-    //     let document: Document | null = this.element.ownerDocument;
-    //     if (document != null) {
-    //         let head: HTMLHeadElement = document.head;
-    //         let style: HTMLStyleElement = document.createElement("style");
-    //         style.type = "text/css";
-    //
-    //         style.innerHTML = `
-    //                 .${elementClass} {
-    //                     font-family: Roboto,'Helvetica Neue',Helvetica,Arial,sans-serif;
-    //                 }
-    //             `;
-    //
-    //         head.appendChild(style);
-    //     } else {
-    //         throw "No parent document for the given element has been set!";
-    //     }
-    // }
 
     /**
      * Determines the dimensions of one square based upon the current width and height-settings and the amount of rows
@@ -363,15 +405,31 @@ export class Heatmap {
     }
 
     /**
-     * Redraw the complete Heatmap and clear the view first.
+     * Redraw the complete Heatmap and clear the view first. This function accepts three optional arguments that
+     * determine the current animation state (if requested).
+     *
+     * @param newRowPositions Current position of the rows. Row[i] = j denotes that the i'th row in the original grid
+     * should move to position j.
+     * @param newColumnPositions New positions of the columns. Column[i] = j denotes that i'th column in the original
+     * grid should move to position j.
+     * @param animationStep A decimal number (in [0, 1]) that denotes the current animation progress. If 0.7 is passed
+     * as a value, 70% of the animation has already passed.
      */
-    private redraw() {
-        this.redrawGrid();
-        this.redrawRowTitles();
-        this.redrawColumnTitles();
+    private redraw(
+        newRowPositions: number[] = Array.from(Array(this.rows.length).keys()),
+        newColumnPositions: number[] = Array.from(Array(this.columns.length).keys()),
+        animationStep: number = 0
+    ) {
+        this.redrawGrid(newRowPositions, newColumnPositions, animationStep);
+        this.redrawRowTitles(newRowPositions, animationStep);
+        this.redrawColumnTitles(newColumnPositions, animationStep);
     }
 
-    private redrawGrid() {
+    private redrawGrid(
+        newRowPositions: number[],
+        newColumnPositions: number[],
+        animationStep: number
+    ) {
         let squareWidth = this.determineSquareWidth();
 
         this.context.clearRect(0, 0, this.settings.width, this.settings.height);
@@ -381,24 +439,47 @@ export class Heatmap {
             this.context.fillStyle = color;
 
             for (const [row, col] of values) {
-                const xStart = this.currentViewPort.xTop + col * (squareWidth + this.settings.squarePadding);
-                const yStart = this.currentViewPort.yTop + row * (squareWidth + this.settings.squarePadding);
-                const xEnd = this.currentViewPort.xTop + (col + 1) * (squareWidth + this.settings.squarePadding);
-                const yEnd = this.currentViewPort.yTop + (row + 1) * (squareWidth + this.settings.squarePadding);
+                // First compute the positions at the start of the animation
+                const xTopStart = this.currentViewPort.xTop + col * (squareWidth + this.settings.squarePadding);
+                const yTopStart = this.currentViewPort.yTop + row * (squareWidth + this.settings.squarePadding);
+
+                // Then compute the positions at the end of the animation
+                const xTopEnd = this.currentViewPort.xTop + newColumnPositions[col] * (squareWidth + this.settings.squarePadding);
+                const yTopEnd = this.currentViewPort.yTop + newRowPositions[row] * (squareWidth + this.settings.squarePadding);
+
+                const xDifference = xTopEnd - xTopStart;
+                const yDifference = yTopEnd - yTopStart;
+
+                let xTopCurrent = xTopStart + xDifference * animationStep;
+                let yTopCurrent = yTopStart + yDifference * animationStep;
+                let xBottomCurrent = xTopCurrent + (squareWidth + this.settings.squarePadding);
+                let yBottomCurrent = yTopCurrent + (squareWidth + this.settings.squarePadding);
 
                 // We do not need to draw the current square
-                if (xEnd < 0 || xStart > this.settings.width) {
+                if (xBottomCurrent < 0 || xTopCurrent > this.settings.width) {
                     continue;
                 }
 
-                if (yEnd < 0 || yStart > this.settings.height) {
+                if (yBottomCurrent < 0 || yTopCurrent > this.settings.height) {
                     continue;
                 }
 
-                // this.context.fillStyle = interpolator(d.value);
+                if (this.settings.highlightSelection && row == this.highlightedRow && col == this.highlightedColumn) {
+                    // Add a highlight border around the currently selected square
+                    this.context.save();
+                    this.context.fillStyle = "#1565C0";
+                    this.context.fillRect(
+                        xTopCurrent - this.settings.squarePadding,
+                        yTopCurrent - this.settings.squarePadding,
+                        squareWidth + 2 * this.settings.squarePadding,
+                        squareWidth + 2 * this.settings.squarePadding
+                    );
+                    this.context.restore();
+                }
+
                 this.context.fillRect(
-                    xStart,
-                    yStart,
+                    xTopCurrent,
+                    yTopCurrent,
                     squareWidth,
                     squareWidth
                 );
@@ -436,34 +517,58 @@ export class Heatmap {
         }
     }
 
-    private redrawRowTitles() {
+    private redrawRowTitles(
+        newRowPositions: number[],
+        animationStep: number
+    ) {
         const squareWidth = this.determineSquareWidth();
 
         // Per how many items should we display a text item? (padding is 8)
         const stepSize: number = Math.max(Math.floor((this.settings.fontSize + 12) / (squareWidth + this.settings.squarePadding)), 1);
 
         const textStart = this.computeTextStartX();
-        const textCenter = Math.max((squareWidth - this.settings.fontSize) / 2, 0);
+        let textCenter = Math.max((squareWidth - this.settings.fontSize) / 2, 0);
 
         this.context.save();
 
-        this.context.fillStyle = "black";
+        this.context.fillStyle = "#404040";
         this.context.textBaseline = "top";
         this.context.textAlign = "start"
         this.context.font = `${this.settings.fontSize}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
         for (let i = 0; i < this.rows.length; i += stepSize) {
             const row = this.rows[i];
+
+            if (this.settings.highlightSelection && i == this.highlightedRow) {
+                this.context.save();
+                this.context.fillStyle = this.settings.highlightFontColor;
+                this.context.font = `${this.settings.highlightFontSize}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
+                textCenter = Math.max((squareWidth - this.settings.highlightFontSize) / 2, 0);
+            }
+
+            const originalY = this.currentViewPort.yTop + (squareWidth + this.settings.squarePadding) * i + textCenter;
+            const endY = this.currentViewPort.yTop + (squareWidth + this.settings.squarePadding) * newRowPositions[i] + textCenter;
+
+            const difference = endY - originalY;
+            const currentY = originalY + difference * animationStep;
+
             this.context.fillText(
                 this.ellipsizeString(row.name, this.textWidth),
                 textStart,
-                this.currentViewPort.yTop + (squareWidth + this.settings.squarePadding) * i + textCenter
+                currentY
             );
+
+            if (this.settings.highlightSelection && i == this.highlightedRow) {
+                this.context.restore();
+            }
         }
 
         this.context.restore();
     }
 
-    private redrawColumnTitles() {
+    private redrawColumnTitles(
+        newColumnPositions: number[],
+        animationStep: number
+    ) {
         let squareWidth = this.determineSquareWidth();
 
         // Per how many items should we display a text item? (padding is 8)
@@ -474,18 +579,36 @@ export class Heatmap {
 
         this.context.save();
         this.context.rotate((90 * Math.PI) / 180);
-        this.context.fillStyle = "black";
+        this.context.fillStyle = "#404040";
         this.context.textBaseline = "bottom";
         this.context.textAlign = "start";
         this.context.font = `${this.settings.fontSize}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
         for (let i = 0; i < this.columns.length; i += stepSize) {
             const col = this.columns[i];
+
+            if (this.settings.highlightSelection && i == this.highlightedColumn) {
+                this.context.save();
+                this.context.fillStyle = this.settings.highlightFontColor;
+                this.context.font = `${this.settings.highlightFontSize}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
+                textCenter = Math.max((squareWidth - this.settings.highlightFontSize) / 2, 0);
+            }
+
+            const originalX = -(this.currentViewPort.xTop + (squareWidth + this.settings.squarePadding) * i + textCenter);
+            const endX = -(this.currentViewPort.xTop + (squareWidth + this.settings.squarePadding) * newColumnPositions[i] + textCenter);
+
+            const difference = endX - originalX;
+            const currentX = originalX + difference * animationStep;
+
             // The axis of the canvas also rotate 90 degrees clockwise
             this.context.fillText(
                 this.ellipsizeString(col.name, this.textHeight),
                 textStart,
-                -(this.currentViewPort.xTop + (squareWidth + this.settings.squarePadding) * i + textCenter)
+                currentX
             );
+
+            if (this.settings.highlightSelection && i == this.highlightedColumn) {
+                this.context.restore();
+            }
         }
 
         this.context.restore();
@@ -498,11 +621,7 @@ export class Heatmap {
             .attr("class", "tip")
             .style("position", "absolute")
             .style("z-index", "10")
-            .style("visibility", "hidden")
-            .style("background-color", "white")
-            .style("padding", "5px")
-            .style("border", "1px solid #dddddd")
-            .style("border-radius", "3px");
+            .style("visibility", "hidden");
     }
 
     private findRowAndColForPosition(x: number, y: number): [number, number] {
@@ -518,29 +637,36 @@ export class Heatmap {
     }
 
     private tooltipMove(event: MouseEvent) {
-        if (!this.settings.enableTooltips || !this.tooltip) {
-            return;
-        }
-
         // Find out which element is situated under the current mouse position.
         const [row, col] = this.findRowAndColForPosition(event.clientX, event.clientY);
 
         if (row < 0 || row >= this.rows.length || col < 0 || col >= this.columns.length) {
-            this.tooltipOut(event);
+            if (this.settings.enableTooltips && this.tooltip) {
+                this.tooltip.style("visibility", "hidden");
+            }
+
+            this.highlightedRow = -1;
+            this.highlightedColumn = -1;
+
+            if (this.settings.highlightSelection) {
+                this.redraw();
+            }
+
             return;
         }
 
-        this.tooltip.html(this.settings.getTooltip(this.values[row][col], this.rows[row], this.columns[col]))
-            .style("top", (event.clientY - 5) + "px")
-            .style("left", (event.clientX + 15) + "px")
-        .style("visibility", "visible");
-    }
+        this.highlightedRow = row;
+        this.highlightedColumn = col;
 
-    private tooltipOut(event: MouseEvent) {
-        if (!this.settings.enableTooltips || !this.tooltip) {
-            return;
+        if (this.settings.highlightSelection) {
+            this.redraw();
         }
 
-        this.tooltip.style("visibility", "hidden");
+        if (this.settings.enableTooltips && this.tooltip) {
+            this.tooltip.html(this.settings.getTooltip(this.values[row][col], this.rows[row], this.columns[col]))
+                .style("top", (event.clientY + 10) + "px")
+                .style("left", (event.clientX + 10) + "px")
+                .style("visibility", "visible");
+        }
     }
 }

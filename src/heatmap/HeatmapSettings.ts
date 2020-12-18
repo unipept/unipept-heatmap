@@ -26,7 +26,17 @@ export class HeatmapSettings extends Settings {
     // Total speed of the reordering animations used in this visualization, should be given in milliseconds (ms).
     animationSpeed: number = 2000;
 
+    // Should we highlight the current row and column over which the cursor is currently hovering?
+    highlightSelection: boolean = true;
+
+    highlightFontSize: number = 16;
+    highlightFontColor: string = "black";
+
     /***** FUNCTIONS *****/
+    // Default ease-in-ease-out transition
+    transition: (x: number) => number = (x: number) => {
+        return x < 0.5 ? 2 * x * x : 1 - Math.pow(-2 * x + 2, 2) / 2;
+    }
 
     // Returns the html to use as tooltip for a cell. Is called with a HeatmapValue that represents the current cell
     // and the row and column objects associated with the highlighted cell as parameters. By default, the
@@ -37,9 +47,30 @@ export class HeatmapSettings extends Settings {
         column: HeatmapFeature
     ) => string = (value: HeatmapValue, row: HeatmapFeature, column: HeatmapFeature) => {
         return `
-            <b class='tip-title' style="font-family: Roboto,'Helvetica Neue',Helvetica,Arial,sans-serif;">${this.getTooltipTitle(value, row, column)}</b>
-            <br>
-            <a style="font-family: Roboto,'Helvetica Neue',Helvetica,Arial,sans-serif;">${this.getTooltipText(value)}</a>
+            <style>
+                .tooltip {
+                    padding: 10px;
+                    border-radius: 5px; 
+                    background: rgba(0, 0, 0, 0.8); 
+                    color: #fff;
+                }
+                
+                .tooltip div,a {
+                    font-family: Roboto, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+                }
+                
+                .tooltip div {
+                    font-weight: bold;
+                }
+            </style>
+            <div class="tooltip">
+                <div>
+                    ${this.getTooltipTitle(value, row, column)}
+                </div>
+                <a>
+                    ${this.getTooltipText(value)}
+                </a>
+            </div>
         `
     };
 
@@ -53,6 +84,6 @@ export class HeatmapSettings extends Settings {
 
     // Text that's displayed inside a tooltip. This is equal to the current cell's value by default.
     getTooltipText: (x: HeatmapValue) => string = (x: HeatmapValue) => {
-        return sanitizeHtml(`score: ${(x.value * 100).toFixed(2)}%`);
+        return sanitizeHtml(`Similarity: ${(x.value * 100).toFixed(2)}%`);
     };
 }

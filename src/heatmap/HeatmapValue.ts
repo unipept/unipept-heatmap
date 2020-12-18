@@ -5,5 +5,6 @@
 export interface HeatmapValue {
     value: number,
     rowId: number,
-    columnId: number
+    columnId: number,
+    color: string
 }

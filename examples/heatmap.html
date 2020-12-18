@@ -17,7 +17,7 @@
     </head>
     <body>
         <div id="heatmap"></div>
-<!--        <button id="cluster">Cluster!</button>-->
+        <button id="cluster">Cluster!</button>
 
         <script>
             const amountOfRows = 50;
@@ -41,13 +41,14 @@
             if (heatmapElement) {
                 let heatmap = new Heatmap.Heatmap(heatmapElement, randomData, rows, cols, {
                     width: document.documentElement.clientWidth,
-                    height: document.documentElement.clientHeight
+                    height: 800,
+                    animationSpeed: 8000
                 });
 
-                // document.getElementById("cluster")
-                //     .addEventListener("click", () => {
-                //         heatmap.cluster();
-                //     });
+                document.getElementById("cluster")
+                    .addEventListener("click", () => {
+                        heatmap.cluster();
+                    });
             }
 
             // d3.csv('data/random_data.csv')
