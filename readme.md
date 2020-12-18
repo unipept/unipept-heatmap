@@ -48,8 +48,8 @@ signature:
 all be in the [0, 1] interval.
 * `rowLabels: string[]`: Labels for the rows of the Heatmap.
 * `columnLabels: string[]`: Labels for the columns of the Heatmap.
-* `options: HeatmapSettings` (*optional*): Can be used to configure the Heatmap before rendering. See below for all 
-options that are currently supported.
+* `options: HeatmapSettings` (*optional*): Can be used to configure the Heatmap before rendering. See 
+[below]("#HeatmapSettings") for all options that are currently supported.
 
 #### `async cluster: Promise<void>`
 By calling `cluster()` upon a previously constructed heatmap object, the rows and columns of the heatmap are clustered
@@ -69,7 +69,7 @@ value, row index, column index and color for one square of the grid.
 * `colId`: Column index of the current position of this value in the heatmap grid.
 * `color`: Color that's associated with this value.
 
-### The HeatmapSettings object
+### HeatmapSettingss
 A `HeatmapSettings` object can be used to fully configure the heatmap and specifies a variety of properties that can
 be used to complete change the heatmap:
 
@@ -100,8 +100,8 @@ are reordered.
 * `animationDuration` (*optional*, default = 2000): Determines how long animations should take, if they are enabled. 
 Time should be given in milliseconds.
 * `transition` (*optional*, default = `Transition.easeInEaseOutCubic`): Transition effect that should be applied to the 
-reordering animation. Pass a predefined function from the Transition namespace, or provide your own function that maps 
-a value from [0, 1] to [0, 1].
+reordering animation. Pass a predefined function from the [Transition]("#Transition") namespace, or provide your own 
+function that maps a value from [0, 1] to [0, 1].
 * `minColor` (*optional*, default = "#EEEEEE"): Color value that should be used to render squares with the lowest 
 possible value. All other values between min and max value will be colored with a color value interpolated between 
 minColor and maxColor. Value should be a valid HTML color string.
