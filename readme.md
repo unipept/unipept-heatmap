@@ -2,17 +2,27 @@
 This repository contains a standalone version of the Unipept heatmap. The heatmap is part of the
 Unipept visualizations project and will be merged with that repository in the future.
 
-*Heatmap example image*
+![Heatmap showcase](docs/resources/heatmap_showcase.png)
 
-A live example of this heatmap can be found on [ObservableHQ](https://observablehq.com/@pverscha/unipept-heatmap-live-example).
+A live example of this heatmap can be found on 
+[ObservableHQ](https://observablehq.com/@pverscha/unipept-heatmap-v2-live-example).
+
+## Features
+* Uses native Canvas to render the heatmap
+* Renders at maximum refresh rate for heatmaps with up to 300 * 300 elements
+* Zoomable and draggable
+* Supports clustering of the values to improve readability
+* Fully animated
+* Completely customizable
 
 ## Requirements
-This package uses D3v5 to render an SVG image, containing the heatmap. All necessary dependences
-(including D3) are automatically installed, when adding this package through npm.
+All necessary requirements are automatically installed when installing this package through NPM. 
 
 ## Installation
-The Unipept heatmap can simply be installed by executing `npm install unipept-heatmap`. This package
-comes with type-information and is suitable for TypeScript environments.
+```
+npm install unipept-heatmap
+```
+This package can easilty be installed from NPM and comes with TypeScript typings by default.
 
 ## Quickstart
 Setting up the Unipept heatmap is very simple. 
@@ -20,90 +30,133 @@ Setting up the Unipept heatmap is very simple.
 1. Install the package through npm (see installation
 instructions).
 2. Add a `div`-element to the page in which your visualization should be displayed.
-3. Invoke the Heatmap constructor with a reference to the `div`-element, and pass the data that
-should be visualized. 
-4. Call the `cluster()`-method on the newly created Heatmap-object to start clustering the heatmap.
-This method performs the UPGMA clustering technique and a heuristic to reorder the found clusters
-for a more comprehensive result.
+3. Invoke the Heatmap constructor with a reference to the `div`-element, and pass the data that should be visualized. 
+4. Call the `cluster()`-method on the newly created Heatmap-object to start clustering the heatmap. This method performs
+the UPGMA clustering technique and a heuristic to reorder the found clusters for a more comprehensive result.
 
-## Heatmap
-### The Heatmap object
-#### Constructor
-The constructor of the `Heatmap` class automatically starts rendering the heatmap upon invokation and has following
+## API
+The Unipept Heatmap has an extensive API that allows you to completely customize the appearance and behaviour of the
+visualization itself. We'll go over each of the different objects that are exposed by the API.
+
+### Heatmap
+#### `constructor`
+The constructor of the `Heatmap` class automatically starts rendering the heatmap upon invocation and has following
 signature:
 
-* `elementIdentifier`: The `HTMLElement` in which the heatmap should be rendered.
-* `data`: An object with 3 properties: `rows`, `columns` and `values`. Each of these proeprties needs a special type of
-object:
-     * `rows`: A `HeatmapElement`-array, see below for full description.
-     * `columns`: A `HeatmapElement`-array, see below for full description.
-     * `values`: A two-dimensional `HeatmapValue`-array. See below for full description.
-* `options` (*optional*): Can be used to configure the Heatmap before rendering. This parameter should receive a
-`HeatmapSettings`-object. See below for full description.
+* `elementIdentifier: HTMLElement`: The `HTMLElement` in which the heatmap should be rendered.
+* `values: number[][]`: A two-dimensional array with all the values that should be visualized. The given numbers should
+all be in the [0, 1] interval.
+* `rowLabels: string[]`: Labels for the rows of the Heatmap.
+* `columnLabels: string[]`: Labels for the columns of the Heatmap.
+* `options: HeatmapSettings` (*optional*): Can be used to configure the Heatmap before rendering. See 
+[below]("#HeatmapSettings") for all options that are currently supported.
 
-#### Cluster
+#### `async cluster: Promise<void>`
 By calling `cluster()` upon a previously constructed heatmap object, the rows and columns of the heatmap are clustered
-using the UPGMA-algorithm, and reordered using the MOLO-heuristic. The rows are clustered first. Columns are clustered
-last.
+using the UPGMA-algorithm, and reordered using the MOLO-heuristic. Rows are clustered first, then columns. The heatmap
+will render an animation to reorder the different rows and columns (if animations are enabled) clearing up what happens
+for the user.
 
-#### Reset
-The complete visualization can be rerendered, by calling `reset()`.
+#### `reset`
+The complete visualization can be rerendered by calling `reset()`.
 
-### The HeatmapElement object
-A HeatmapElement represents one item that can be clustered. The rows and columns of the heatmap are typically 
-`HeatmapElement`'s. This object consists of 3 properties:
+### HeatmapValue
+A HeatmapValue object represents one value (or one grid) in the heatmap. This interface keeps track of the decimal
+value, row index, column index and color for one square of the grid.
 
-* `name`: The name of the element. Will be used as a label for the respective row / column of the heatmap.
-* `id`: (*optional*): An ID that will be used internally by the heatmap to refer to this element. Defaults to the index
-of this element in the `rows` or `columns` array.
-* `extras` (*optional*): Any extra value that can be associated to this element. This value can be referenced from any
-of the overridden options-functions.
+* `value`: Decimal value that is being rendered on the heatmap.
+* `rowId`: Row index of the current position of this value in the heatmap grid.
+* `colId`: Column index of the current position of this value in the heatmap grid.
+* `color`: Color that's associated with this value.
 
-### The HeatmapValue object
-All values that should be rendered by the heatmap are given as a two dimensional grid. Every value is an object that
-should contain the following properties:
-
-* `value`: The value of this cell. This should be a float in the [0, 1] interval.
-
-### The HeatmapSettings object
-A `HeatmapSettings` object can be used to fully configure the heatmap and contains the following properties:
+### HeatmapSettingss
+A `HeatmapSettings` object can be used to fully configure the heatmap and specifies a variety of properties that can
+be used to complete change the heatmap:
 
 * `width` (*optional*, default = 800): Maximum width of the visualization in pixels.
 * `height` (*optional*, default = 800): Maximum height of the visualization in pixels.
-* `textWidth` (*optional*, default = 100): Maximum amount of pixels that can be used for the row labels.
-* `textHeight` (*optional*, default = 100): Maximum amount of pixels that can be used for the column labels.
 * `enableTooltips` (*optional*, default = true): Are tooltips shown when hovering over an element in the heatmap? 
-* `className` (*optional*, default = "heatmap"): An optional class that's appended to the `HTMLElement` wherein the 
-heatmap is rendered.
-* `maximumSquareWidth` (*optional*, default = 50): Absolute maximum size of an individual square in pixels. This value
-is used as an upper range, and the actual square width can be smaller, depending on the number of items in the heatmap.
-* `squarePadding` (*optional*, default = 2): Amount of pixels between successive squares in the heatmap.
-* `visualizationTextPadding` (*optional*, default = 5): Padding in pixels between the heatmap grid and the labels.
-* `fontSize` (*optional*, default = 12): Size of the text in the labels of the heatmap.
-* `animationSpeed` (*optional*, default = 2000): How long should reordering the animations take? This value is given in
-milliseconds.
-* `getTooltip` (*optional*, default = generic tooltip function): The function that's called whenever the user hovers 
-over a cell in the heatmap. This function needs to return a string representing HTML-code that will be executed and 
+* `initialTextWidth` (*optional*, default = 100): The amount of pixels that can maximally be used for row labels when 
+initially rendering the heatmap.
+* `initialTextHeight` (*optional*, default = 100): The amount of pixels that can maximally be used for column labels 
+when initially rendering the heatmap.
+* `squarePadding` (*optional*, default = 2): Padding between squares in the heatmap grid (in pixels). Set to 0 for no 
+padding.
+* `visualizationTextPadding` (*optional*, default = 4): Padding between the visualization and the labels (in pixels). 
+This padding is applied to both the row and column labels.
+* `fontSize` (*optional*, default = 14): Font size for labels, when current label is not highlighted. Size must be given
+in pixels.
+* `labelColor` (*optional*, default = "#404040"): Color of label text, when label is not highlighted. Value should be a 
+valid HTML color string (hexadecimal).
+* `highlightSelection` (*optional*, default = true): Should the row, column and square that are currently being hovered 
+by the mouse cursor be highlighted?
+* `highlightFontSize` (*optional*, default = 16): Font size for labels, when current label is highlighted. Size must be 
+given in pixels.
+* `highlightFontColor` (*optional*, default = "black"): Color of label text, when label is highlighted. Value should be
+a valid HTML color string (hexadecimal).
+* `className` (*optional*, default = "heatmap"): Classname that's internally used for the object.
+* `animationsEnabled` (*optional*, default = true): Determines if animations should be rendered when rows and columns 
+are reordered.
+* `animationDuration` (*optional*, default = 2000): Determines how long animations should take, if they are enabled. 
+Time should be given in milliseconds.
+* `transition` (*optional*, default = `Transition.easeInEaseOutCubic`): Transition effect that should be applied to the 
+reordering animation. Pass a predefined function from the [Transition]("#Transition") namespace, or provide your own 
+function that maps a value from [0, 1] to [0, 1].
+* `minColor` (*optional*, default = "#EEEEEE"): Color value that should be used to render squares with the lowest 
+possible value. All other values between min and max value will be colored with a color value interpolated between 
+minColor and maxColor. Value should be a valid HTML color string.
+* `maxColor` (*optional*, default = "#1565C0"): Color value that should be used to render squares with the highest 
+possible value. All other values between min and max value will be colored with a color value interpolated between 
+minColor and maxColor. Value should be a valid HTML color string.
+* `colorBuckets` (*optional*, default = 50): How many distinct colors between minColor and maxColor should be used for 
+the heatmap (this value thus determines the size of the color palette). Increasing this value will decrease the 
+heatmap's performance.
+* `getToolTip` (*optional*, default = generic tooltip function) Returns the html to use as tooltip for a cell. Is called
+with a HeatmapValue that represents the current cell and the row and column objects associated with the highlighted 
+cell as parameters. The result of getTooltipTitle is used for the header and getTooltipText is used for the body of 
+the tooltip by default. This function needs to return a string representing HTML-code that will be executed and 
 receives 3 parameters:
     * `HeatmapValue`: which represents the current cell over which the user is hovering.
-    * `HeatmapElement`: an element that represents the current row over which the user is hovering.
-    * `HeatmapElement`: an element that represents the current column over which the user is hovering.
+    * `HeatmapFeature`: an element that represents the current row over which the user is hovering.
+    * `HeatmapFeature`: an element that represents the current column over which the user is hovering.
 **NOTE: Be very cautious in passing user input directly as a result of this function. Please always sanitize the user's
 input before returning it, as this might lead to reflected XSS-attacks.**
-* `getTooltipTitle` (*optional*, default = column + row name=): This function is used to fill in a 
-tooltip's title. This function needs to return a string representing HTML-code that will be executed and 
+* `getTooltipTitle` (*optional*, default = generic title function) Returns text that's being used for the title of a 
+tooltip. This tooltip provides information to the user about the value that's currently hovered by the mouse cursor.
+This function needs to return a string representing HTML-code that will be executed and 
 receives 3 parameters:
-     * `HeatmapValue`: which represents the current cell over which the user is hovering.
-     * `HeatmapElement`: an element that represents the current row over which the user is hovering.
-     * `HeatmapElement`: an element that represents the current column over which the user is hovering.
+    * `HeatmapValue`: which represents the current cell over which the user is hovering.
+    * `HeatmapFeature`: an element that represents the current row over which the user is hovering.
+    * `HeatmapFeature`: an element that represents the current column over which the user is hovering.
 **NOTE: Be very cautious in passing user input directly as a result of this function. Please always sanitize the user's
 input before returning it, as this might lead to reflected XSS-attacks.**
-* `getTooltipText` (*optional*, default = cell value): This function is used to fill in a 
-tooltip's body text. This function needs to return a string representing HTML-code that will be executed and 
+* `getTooltipText` (*optional*, default = generic body function) Returns text that's being used for the body of a 
+tooltip. This tooltip provides information to the user about the value that's currently hovered by the mouse cursor.
+This function needs to return a string representing HTML-code that will be executed and 
 receives 3 parameters:
-     * `HeatmapValue`: which represents the current cell over which the user is hovering.
-     * `HeatmapElement`: an element that represents the current row over which the user is hovering.
-     * `HeatmapElement`: an element that represents the current column over which the user is hovering.
+    * `HeatmapValue`: which represents the current cell over which the user is hovering.
+    * `HeatmapFeature`: an element that represents the current row over which the user is hovering.
+    * `HeatmapFeature`: an element that represents the current column over which the user is hovering.
 **NOTE: Be very cautious in passing user input directly as a result of this function. Please always sanitize the user's
 input before returning it, as this might lead to reflected XSS-attacks.**
 
+### Transition
+This namespace provides a few different transitions that can be used to tweak the animations for this heatmap.
+
+#### easeInEaseOutCubic
+![Cubic ease in, ease out transition](docs/resources/easeInEaseOutCubic.gif)
+
+#### easeInCubic
+![Cubic ease in transition](docs/resources/easeInCubic.gif)
+
+#### easeOutCubic
+![Cubic ease out transition](docs/resources/easeOutCubic.gif)
+
+#### easeInEaseOutElastic
+![Elastic ease in, ease out transition](docs/resources/easeInEaseOutElastic.gif)
+
+#### easeInElastic
+![Elastic ease in transition](docs/resources/easeInElastic.gif)
+
+#### easeOutElastic
+![Elastic ease out transition](docs/resources/easeOutElastic.gif)

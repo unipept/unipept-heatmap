@@ -26,7 +26,7 @@ export namespace Transition {
     /**
      * See: https://easings.net/#easeInOutElastic
      */
-    export function easeInOutElastic(x: number): number {
+    export function easeInEaseOutElastic(x: number): number {
         const c5 = (2 * Math.PI) / 4.5;
 
         return x === 0
