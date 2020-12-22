@@ -1,2 +1,2 @@
-export * from "./heatmap";
-export * from "./transition";
+export * from "./heatmap/index";
+export * from "./transition/index";
