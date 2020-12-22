@@ -29,7 +29,7 @@
   },
   "scripts": {
     "test": "jest",
-    "build": "webpack && dts-bundle --configJson dts-bundle.config.json",
+    "build": "webpack",
     "types": "tsc --emitDeclarationOnly --downlevelIteration --declaration src/**/*.ts --outDir types --target esnext --skipLibCheck"
   },
   "repository": {
