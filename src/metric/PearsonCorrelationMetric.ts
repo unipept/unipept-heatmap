@@ -1,4 +1,4 @@
-import Metric from "./metric";
+import Metric from "./Metric";
 
 export default class PearsonCorrelationMetric implements Metric {
     getDistance(matrix: number[][]): number[][] {
