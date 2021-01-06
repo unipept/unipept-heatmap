@@ -277,7 +277,7 @@ export default class Heatmap {
      *
      * @return A string that represents the content of a valid SVG file.
      */
-    public toSVG(options: SVGOptions): string {
+    public toSVG(options: SVGOptions = new SVGOptions()): string {
         const dimension = options.squareDimension;
 
         let svgContents = "";
@@ -334,7 +334,15 @@ export default class Heatmap {
             const x = (dimension + options.squarePadding) * col + textCenter;
 
             svgContents += `
-                <text x="${x}" y="${y}" font-size="${options.fontSize}" text-anchor="start" fill="black">
+                <text 
+                    x="${x}" 
+                    y="${y}" 
+                    font-size="${options.fontSize}" 
+                    text-anchor="start" 
+                    fill="black"
+                    transform="rotate(90, ${x}, ${y})"
+                    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+                >
                     ${this.columns[col].name}
                 </text>
             `;
@@ -346,7 +354,7 @@ export default class Heatmap {
         }
 
         return `
-            <svg xmlns="http://www.w3.org/2000/svg" width="${maximumWidth}" height="${maximumHeight}">
+            <svg xmlns="http://www.w3.org/2000/svg" width="${Math.ceil(maximumWidth)}" height="${Math.ceil(maximumHeight)}">
                 ${svgContents}
             </svg>
         `;
