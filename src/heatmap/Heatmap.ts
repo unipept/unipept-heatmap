@@ -12,6 +12,7 @@ import Preprocessor from "./Preprocessor";
 
 import "core-js/stable";
 import "regenerator-runtime/runtime";
+import SVGOptions from "./../svg/SVGOptions";
 
 type ViewPort = {
     xTop: number,
@@ -265,6 +266,90 @@ export default class Heatmap {
                 el.style.height = size.toString();
             }
         }, 1000);
+    }
+
+    /**
+     * Convert the heatmap to an SVG-string that can easily be downloaded as a valid SVG-file. Note that the current
+     * positioning and zooming level of the heatmap will not be taken into account (but clustering will!).
+     *
+     * Note that this function can take a while to compute for larger heatmaps. It is recommended to start this
+     * function in a dedicated worker in order not to block the main JS thread.
+     *
+     * @return A string that represents the content of a valid SVG file.
+     */
+    public toSVG(options: SVGOptions): string {
+        const dimension = options.squareDimension;
+
+        let svgContents = "";
+
+        // First produce SVG-contents for all squares in the heatmap
+        for (const [color, values] of this.valuesPerColor) {
+            for (const [row, col] of values) {
+                const xTop = col * (dimension + options.squarePadding);
+                const yTop = row * (dimension + options.squarePadding);
+
+                svgContents += `
+                    <rect width="${dimension}" height="${dimension}" fill="${color}" x="${xTop}" y="${yTop}"></rect>
+                `
+            }
+        }
+
+        const offscreenCanvas = new OffscreenCanvas(1, 1);
+        const ctx = offscreenCanvas.getContext("2d");
+
+        ctx!.font = `${options.fontSize}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
+
+        // Then add the row and colum titles to the heatmap
+        const x = dimension * this.columns.length + options.squarePadding * (this.columns.length - 1) + options.visualizationTextPadding;
+        const textCenter = Math.max((dimension - options.fontSize) / 2, 0);
+
+        let maximumWidth: number = x;
+        for (let row = 0; row < this.rows.length; row++) {
+            const y = (dimension + options.squarePadding) * row + textCenter;
+
+            svgContents += `
+                <text 
+                    x="${x}" 
+                    y="${y}" 
+                    font-size="${options.fontSize}" 
+                    dominant-baseline="hanging" 
+                    fill="black"
+                    font-family="'Helvetica Neue', Helvetica, Arial, sans-serif"
+                >
+                    ${this.rows[row].name}
+                </text>
+            `;
+
+            // Compute the length of the label in pixels
+            const computedWidth: number = ctx!.measureText(this.rows[row].name).width + x;
+            if (computedWidth > maximumWidth) {
+                maximumWidth = computedWidth;
+            }
+        }
+
+        const y = dimension * this.rows.length + options.squarePadding * (this.rows.length - 1) + options.visualizationTextPadding;
+        let maximumHeight: number = y;
+
+        for (let col = 0; col < this.columns.length; col++) {
+            const x = (dimension + options.squarePadding) * col + textCenter;
+
+            svgContents += `
+                <text x="${x}" y="${y}" font-size="${options.fontSize}" text-anchor="start" fill="black">
+                    ${this.columns[col].name}
+                </text>
+            `;
+
+            const computedWidth: number = ctx!.measureText(this.columns[col].name).width + y;
+            if (computedWidth > maximumHeight) {
+                maximumHeight = computedWidth;
+            }
+        }
+
+        return `
+            <svg xmlns="http://www.w3.org/2000/svg" width="${maximumWidth}" height="${maximumHeight}">
+                ${svgContents}
+            </svg>
+        `;
     }
 
     /**
@@ -635,8 +720,8 @@ export default class Heatmap {
 
         if (this.settings.enableTooltips && this.tooltip) {
             this.tooltip.html(this.settings.getTooltip(this.values[row][col], this.rows[row], this.columns[col]))
-                .style("top", (event.clientY + 10) + "px")
-                .style("left", (event.clientX + 10) + "px")
+                .style("top", (event.pageY + 10) + "px")
+                .style("left", (event.pageX + 10) + "px")
                 .style("visibility", "visible");
         }
     }
