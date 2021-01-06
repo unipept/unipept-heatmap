@@ -60,6 +60,11 @@ for the user.
 #### `reset`
 The complete visualization can be rerendered by calling `reset()`.
 
+#### `toSVG`
+Export the heatmap to SVG. This function produces a valid SVG-string that can directly be downloaded or rendered. Note
+that it can a significant time to perform this function for very large heatmaps. It's recommended to wrap this function
+in a Worker thread to avoid blocking the main UI-thread in that case.
+
 ### HeatmapValue
 A HeatmapValue object represents one value (or one grid) in the heatmap. This interface keeps track of the decimal
 value, row index, column index and color for one square of the grid.
