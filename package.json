@@ -3,7 +3,7 @@
   "version": "2.0.0-beta.5",
   "description": "HeatMap built for the Unipept project. See http://unipept.ugent.be for more information. This HeatMap supports UPGMA-clustering and MOLO-reordering.",
   "main": "dist/bundle.js",
-  "typings": "dist/index.d.ts",
+  "typings": "./types",
   "readme": "readme.md",
   "dependencies": {
     "@types/d3": "^5.16.0",
@@ -29,7 +29,8 @@
   },
   "scripts": {
     "test": "jest",
-    "build": "webpack && dts-bundle --configJson dts-bundle.config.json"
+    "build": "webpack",
+    "types": "tsc --emitDeclarationOnly --downlevelIteration --declaration src/**/*.ts --outDir types --target esnext --skipLibCheck"
   },
   "repository": {
     "type": "git",

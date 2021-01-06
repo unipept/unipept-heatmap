@@ -1,5 +1,5 @@
-import Metric from "./metric";
-import ClusterElement from "../cluster/clusterElement";
+import Metric from "./Metric";
+import ClusterElement from "../cluster/ClusterElement";
 
 export default class EuclidianDistanceMetric implements Metric {
     getDistance(matrix: number[][]): number[][] {
