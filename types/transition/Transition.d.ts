@@ -17,7 +17,7 @@ export declare namespace Transition {
     /**
      * See: https://easings.net/#easeInOutElastic
      */
-    function easeInOutElastic(x: number): number;
+    function easeInEaseOutElastic(x: number): number;
     /**
      * See: https://easings.net/#easeInElastic
      */

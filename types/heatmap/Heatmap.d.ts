@@ -1,6 +1,8 @@
 import HeatmapSettings from "./HeatmapSettings";
+import HeatmapValue from "./HeatmapValue";
 import "core-js/stable";
 import "regenerator-runtime/runtime";
+import SVGOptions from "./../svg/SVGOptions";
 export default class Heatmap {
     private element;
     private settings;
@@ -18,7 +20,7 @@ export default class Heatmap {
     private highlightedRow;
     private highlightedColumn;
     private pixelRatio;
-    constructor(elementIdentifier: HTMLElement, values: number[][], rowLabels: string[], columnLabels: string[], options?: HeatmapSettings);
+    constructor(elementIdentifier: HTMLElement, values: (number | HeatmapValue)[][], rowLabels: string[], columnLabels: string[], options?: HeatmapSettings);
     private fillOptions;
     /**
      * Reset the complete view to it's initial state with the options and data passed in the constructor.
@@ -32,6 +34,16 @@ export default class Heatmap {
      */
     cluster(toCluster?: "all" | "columns" | "rows" | "none"): Promise<void>;
     setFullScreen(fullscreen: boolean): void;
+    /**
+     * Convert the heatmap to an SVG-string that can easily be downloaded as a valid SVG-file. Note that the current
+     * positioning and zooming level of the heatmap will not be taken into account (but clustering will!).
+     *
+     * Note that this function can take a while to compute for larger heatmaps. It is recommended to start this
+     * function in a dedicated worker in order not to block the main JS thread.
+     *
+     * @return A string that represents the content of a valid SVG file.
+     */
+    toSVG(options?: SVGOptions): string;
     /**
      * Extracts a linear order from a dendrogram by following all branches up to leaves in a depth-first ordering.
      *

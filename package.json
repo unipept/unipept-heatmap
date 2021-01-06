@@ -1,6 +1,6 @@
 {
   "name": "unipept-heatmap",
-  "version": "2.0.0-beta.5",
+  "version": "2.0.0-beta.6",
   "description": "HeatMap built for the Unipept project. See http://unipept.ugent.be for more information. This HeatMap supports UPGMA-clustering and MOLO-reordering.",
   "main": "dist/bundle.js",
   "typings": "./types",
