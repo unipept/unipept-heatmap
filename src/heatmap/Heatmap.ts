@@ -49,6 +49,12 @@ export default class Heatmap {
 
     private pixelRatio: number;
 
+    private lastZoomStatus: { k: number, x: number, y: number } = {
+        k: 1,
+        x: 0,
+        y: 0
+    };
+
     constructor(
         elementIdentifier: HTMLElement,
         values: (number | HeatmapValue)[][],
@@ -252,20 +258,22 @@ export default class Heatmap {
         this.redraw();
     }
 
-    public setFullScreen(fullscreen: boolean) {
-        // the delay is because the event fires before we're in fullscreen
-        // so the height en width functions don't give a correct result
-        // without the delay
-        setTimeout(() => {
-            let size = this.settings.width;
-            if (fullscreen) {
-                size = Math.min(window.innerWidth - 44, window.innerHeight - 250);
-            }
-            for (let el of this.element.getElementsByTagName("svg")) {
-                el.style.width = size.toString();
-                el.style.height = size.toString();
-            }
-        }, 1000);
+    public resize(newWidth: number, newHeight: number) {
+        this.settings.width = newWidth;
+        this.settings.height = newHeight;
+
+        this.visElement.attr("height", this.pixelRatio * newHeight);
+        this.visElement.attr("width", this.pixelRatio * newWidth);
+        this.visElement.attr("style", `width: ${this.settings.width}px; height: ${this.settings.height}px`);
+
+        this.originalViewPort = {
+            xTop: 0,
+            yTop: 0,
+            xBottom: newWidth,
+            yBottom: newHeight
+        }
+
+        this.zoomed(this.lastZoomStatus);
     }
 
     /**
@@ -431,11 +439,14 @@ export default class Heatmap {
     }
 
     private zoomed({ k, x, y }: { k: number, x: number, y: number }) {
+        this.lastZoomStatus = { k, x, y };
+
         const newTextStartX = x + this.computeTextStartX(
             this.originalViewPort,
             this.settings.initialTextWidth,
             this.settings.initialTextHeight
         ) * k;
+
         const newTextStartY = y + this.computeTextStartY(
             this.originalViewPort,
             this.settings.initialTextWidth,

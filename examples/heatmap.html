@@ -18,6 +18,7 @@
     <body>
         <div id="heatmap"></div>
         <button id="cluster">Cluster!</button>
+        <button id="resize">Resize!</button>
 
         <script>
             const amountOfRows = 80;
@@ -47,6 +48,11 @@
                 document.getElementById("cluster")
                     .addEventListener("click", () => {
                         heatmap.cluster();
+                    });
+
+                document.getElementById("resize")
+                    .addEventListener("click", () => {
+                        heatmap.resize(1000, 1000);
                     });
             }
         </script>
