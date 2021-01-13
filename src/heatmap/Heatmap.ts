@@ -265,6 +265,7 @@ export default class Heatmap {
         this.visElement.attr("height", this.pixelRatio * newHeight);
         this.visElement.attr("width", this.pixelRatio * newWidth);
         this.visElement.attr("style", `width: ${this.settings.width}px; height: ${this.settings.height}px`);
+        this.context.scale(this.pixelRatio, this.pixelRatio);
 
         this.originalViewPort = {
             xTop: 0,

@@ -20,6 +20,7 @@ export default class Heatmap {
     private highlightedRow;
     private highlightedColumn;
     private pixelRatio;
+    private lastZoomStatus;
     constructor(elementIdentifier: HTMLElement, values: (number | HeatmapValue)[][], rowLabels: string[], columnLabels: string[], options?: HeatmapSettings);
     private fillOptions;
     /**
@@ -33,7 +34,7 @@ export default class Heatmap {
      * denotes that the clustering is performed on the rows only.
      */
     cluster(toCluster?: "all" | "columns" | "rows" | "none"): Promise<void>;
-    setFullScreen(fullscreen: boolean): void;
+    resize(newWidth: number, newHeight: number): void;
     /**
      * Convert the heatmap to an SVG-string that can easily be downloaded as a valid SVG-file. Note that the current
      * positioning and zooming level of the heatmap will not be taken into account (but clustering will!).
