@@ -23,7 +23,7 @@ export default class UPGMAClusterer implements Clusterer {
      */
     cluster(data: ClusterElement[]): TreeNode {
         if (data.length < 1) {
-            return new TreeNode(null, null, [], 0);
+            return new TreeNode(null,null, null, [], 0);
         }
 
         // All clusters that exist in a current step.
@@ -34,7 +34,7 @@ export default class UPGMAClusterer implements Clusterer {
         let valueMatrix: number[][] = [];
         for (let i = 0; i < data.length; i++) {
             let row: number[] = data[i].values;
-            clusters.set(i, new Cluster([data[i]], i, new TreeNode(null, null, [data[i]], 0)));
+            clusters.set(i, new Cluster([data[i]], i, new TreeNode(null, null, null, [data[i]], 0)));
             valueMatrix.push(row);
         }
 

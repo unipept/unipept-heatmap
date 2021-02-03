@@ -13,6 +13,8 @@ import Preprocessor from "./Preprocessor";
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 import SVGOptions from "./../svg/SVGOptions";
+import RenderHelper from "./../render/RenderHelper";
+import CanvasRenderHelper from "./../render/CanvasRenderHelper";
 
 type ViewPort = {
     xTop: number,
@@ -48,6 +50,9 @@ export default class Heatmap {
     private highlightedColumn: number = -1;
 
     private pixelRatio: number;
+
+    private rowClusterRoot: TreeNode | undefined;
+    private colClusterRoot: TreeNode | undefined;
 
     private lastZoomStatus: { k: number, x: number, y: number } = {
         k: 1,
@@ -158,8 +163,9 @@ export default class Heatmap {
                 this.values[idx].filter(val => val.rowId == el.idx).map(x => x.value), el.idx!)
             );
 
+            this.rowClusterRoot = molo.reorder(clusterer.cluster(rowElements));
             // Now we perform a depth first search on the result in order to find the order of the values
-            rowOrder = this.determineOrder(molo.reorder(clusterer.cluster(rowElements)));
+            rowOrder = this.determineOrder(this.rowClusterRoot);
             for (const [idx, row] of Object.entries(rowOrder)) {
                 inverseRowOrder[row] = Number.parseInt(idx);
             }
@@ -177,7 +183,8 @@ export default class Heatmap {
                 )
             );
 
-            columnOrder = this.determineOrder(clusterer.cluster(columnElements));
+            this.colClusterRoot = molo.reorder(clusterer.cluster(columnElements));
+            columnOrder = this.determineOrder(this.colClusterRoot);
             for (const [idx, col] of Object.entries(columnOrder)) {
                 inverseColumnOrder[col] = Number.parseInt(idx);
             }
@@ -404,12 +411,21 @@ export default class Heatmap {
         return Math.min(squareWidth, squareHeight);
     }
 
+    private determineDendrogramWidth(): number {
+        if (this.settings.dendrogramEnabled) {
+            return this.settings.dendrogramWidth * this.lastZoomStatus.k;
+        } else {
+            return 0;
+        }
+    }
+
     private computeTextStartX(
         viewPort = this.currentViewPort,
         textWidth: number = this.textWidth,
         textHeight: number = this.textHeight
     ): number {
         return viewPort.xTop +
+            this.determineDendrogramWidth() +
             this.determineSquareWidth(viewPort, textWidth, textHeight) * this.columns.length +
             this.settings.squarePadding * (this.columns.length - 1) +
             this.settings.visualizationTextPadding;
@@ -484,6 +500,7 @@ export default class Heatmap {
         this.redrawGrid(newRowPositions, newColumnPositions, animationStep);
         this.redrawRowTitles(newRowPositions, animationStep);
         this.redrawColumnTitles(newColumnPositions, animationStep);
+        this.redrawDendrogram(animationStep);
     }
 
     private redrawGrid(
@@ -492,6 +509,7 @@ export default class Heatmap {
         animationStep: number
     ) {
         let squareWidth = this.determineSquareWidth();
+        const dendrogramWidth: number = this.determineDendrogramWidth();
 
         this.context.clearRect(0, 0, this.settings.width, this.settings.height);
 
@@ -501,11 +519,11 @@ export default class Heatmap {
 
             for (const [row, col] of values) {
                 // First compute the positions at the start of the animation
-                const xTopStart = this.currentViewPort.xTop + col * (squareWidth + this.settings.squarePadding);
+                const xTopStart = this.currentViewPort.xTop + dendrogramWidth + col * (squareWidth + this.settings.squarePadding);
                 const yTopStart = this.currentViewPort.yTop + row * (squareWidth + this.settings.squarePadding);
 
                 // Then compute the positions at the end of the animation
-                const xTopEnd = this.currentViewPort.xTop + newColumnPositions[col] * (squareWidth + this.settings.squarePadding);
+                const xTopEnd = this.currentViewPort.xTop + dendrogramWidth + newColumnPositions[col] * (squareWidth + this.settings.squarePadding);
                 const yTopEnd = this.currentViewPort.yTop + newRowPositions[row] * (squareWidth + this.settings.squarePadding);
 
                 const xDifference = xTopEnd - xTopStart;
@@ -631,6 +649,7 @@ export default class Heatmap {
         animationStep: number
     ) {
         let squareWidth = this.determineSquareWidth();
+        const dendrogramWidth = this.determineDendrogramWidth();
 
         // Per how many items should we display a text item? (padding is 8)
         let stepSize: number = Math.max(Math.floor((this.settings.fontSize + 12) / (squareWidth + this.settings.squarePadding)), 1);
@@ -654,8 +673,8 @@ export default class Heatmap {
                 textCenter = Math.max((squareWidth - this.settings.highlightFontSize) / 2, 0);
             }
 
-            const originalX = -(this.currentViewPort.xTop + (squareWidth + this.settings.squarePadding) * i + textCenter);
-            const endX = -(this.currentViewPort.xTop + (squareWidth + this.settings.squarePadding) * newColumnPositions[i] + textCenter);
+            const originalX = -(this.currentViewPort.xTop + dendrogramWidth + (squareWidth + this.settings.squarePadding) * i + textCenter);
+            const endX = -(this.currentViewPort.xTop + dendrogramWidth + (squareWidth + this.settings.squarePadding) * newColumnPositions[i] + textCenter);
 
             const difference = endX - originalX;
             const currentX = originalX + difference * animationStep;
@@ -675,6 +694,94 @@ export default class Heatmap {
         this.context.restore();
     }
 
+    private bsfNodesPerDepth(root: TreeNode) {
+        const nodesPerDepth: TreeNode[][] = [];
+
+        const queue: [TreeNode, number][] = [];
+        // Push current node and depth of the node
+        queue.push([root, 0]);
+
+        while (queue.length > 0) {
+            const [node, depth]: [TreeNode, number] = queue.shift()!;
+            if (nodesPerDepth.length <= depth) {
+                nodesPerDepth.push([]);
+            }
+            nodesPerDepth[depth].push(node);
+
+            if (node.leftChild) {
+                queue.push([node.leftChild, depth + 1]);
+            }
+
+            if (node.rightChild) {
+                queue.push([node.rightChild, depth + 1]);
+            }
+        }
+
+        return nodesPerDepth;
+    }
+
+    private redrawDendrogram(animationStep: number) {
+        if (!this.rowClusterRoot || animationStep !== 0) {
+            return;
+        }
+
+        // Calculate size of all the different items
+        const squareWidth: number = this.determineSquareWidth();
+        const dendrogramWidth: number = this.settings.dendrogramWidth * this.lastZoomStatus.k;
+
+        const renderHelper: RenderHelper = new CanvasRenderHelper(this.context);
+
+        // First render the vertical dendrogram
+
+        const nodesPerDepth: TreeNode[][] = this.bsfNodesPerDepth(this.rowClusterRoot!);
+        const verticalLineOffset: number = this.currentViewPort.yTop + squareWidth / 2;
+
+        // Maps node with id i to it's corresponding starting position ([x, y]);
+        const nodePositions: Map<number, [number, number]> = new Map<number, [number, number]>();
+        const newRowPositions = this.determineOrder(this.rowClusterRoot);
+        for (let i = 0; i < newRowPositions.length; i++) {
+            nodePositions.set(
+                newRowPositions[i],
+                [
+                    this.currentViewPort.xTop + dendrogramWidth,
+                    i * (squareWidth + this.settings.squarePadding) + verticalLineOffset
+                ]
+            );
+        }
+
+        // Calculate the amount of pixels that can be used for each merge
+        const pixelsPerMerge: number = dendrogramWidth / this.rows.length;
+        let currentMergeStep: number = this.currentViewPort.xTop + dendrogramWidth - pixelsPerMerge;
+
+        for (let currentDepth = nodesPerDepth.length - 1; currentDepth > 0; currentDepth--) {
+            // We need to iterate over the different nodes in increments of 2 (since these nodes define a merge per 2)
+            for (let i = 0; i < nodesPerDepth[currentDepth].length; i += 2) {
+                const leftChild = nodesPerDepth[currentDepth][i];
+                const rightChild = nodesPerDepth[currentDepth][i + 1];
+                const parent = leftChild.parent;
+
+                const [leftX, leftY] = nodePositions.get(leftChild.id)!;
+                const [rightX, rightY] = nodePositions.get(rightChild.id)!;
+
+                // Line for the left child
+                renderHelper.renderLine(leftX, leftY, currentMergeStep, leftY, 1);
+                // Line for right child
+                renderHelper.renderLine(rightX, rightY, currentMergeStep, rightY, 1);
+
+                // Draw vertical line that connects both items
+                renderHelper.renderLine(currentMergeStep, leftY, currentMergeStep, rightY, 1);
+
+                // Update the starting position of the parent node.
+                if (parent) {
+                    const mergePoint: number = Math.min(leftY, rightY) + Math.abs(leftY - rightY) / 2;
+                    nodePositions.set(parent.id, [currentMergeStep, mergePoint]);
+                }
+
+                currentMergeStep -= pixelsPerMerge;
+            }
+        }
+    }
+
     private initTooltip() {
         return d3.select("body")
             .append("div")
@@ -686,7 +793,8 @@ export default class Heatmap {
     }
 
     private findRowAndColForPosition(x: number, y: number): [number, number] {
-        const currentX = x - this.currentViewPort.xTop;
+        const dendrogramWidth = this.determineDendrogramWidth();
+        const currentX = x - this.currentViewPort.xTop - dendrogramWidth;
         const currentY = y - this.currentViewPort.yTop;
 
         const squareWidth = this.determineSquareWidth();

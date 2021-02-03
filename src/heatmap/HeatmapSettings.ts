@@ -97,6 +97,16 @@ export default class HeatmapSettings extends Settings {
     colorBuckets: number = 50;
 
     /**
+     * Should a dendrogram be rendered for both axes?
+     */
+    dendrogramEnabled: boolean = true;
+
+    /**
+     * Amount of pixels that can be taken in by the dendrogram
+     */
+    dendrogramWidth: number = 100;
+
+    /**
      * Returns the html to use as tooltip for a cell. Is called with a HeatmapValue that represents the current cell and
      * the row and column objects associated with the highlighted cell as parameters. The result of getTooltipTitle is
      * used for the header and getTooltipText is used for the body of the tooltip by default.

@@ -11,17 +11,17 @@ import Utils from "./utils";
  */
 let getExpectedSmallDendrogram = function() {
     // First create the leaf nodes
-    let a: TreeNode = new TreeNode(null, null, [], 0);
-    let b: TreeNode = new TreeNode(null, null, [], 0);
-    let c: TreeNode = new TreeNode(null, null, [], 0);
-    let d: TreeNode = new TreeNode(null, null, [], 0);
-    let e: TreeNode = new TreeNode(null, null, [], 0);
+    let a: TreeNode = new TreeNode(null, null, null, [], 0);
+    let b: TreeNode = new TreeNode(null, null, null, [], 0);
+    let c: TreeNode = new TreeNode(null, null, null, [], 0);
+    let d: TreeNode = new TreeNode(null, null, null, [], 0);
+    let e: TreeNode = new TreeNode(null, null, null, [], 0);
 
     // Now connect all leafs as they were merged
-    let ab: TreeNode = new TreeNode(b, a, [], 0.1);
-    let ed: TreeNode = new TreeNode(e, d, [], 0.25);
-    let cba: TreeNode = new TreeNode(c, ab, [], 0.77);
-    let root: TreeNode = new TreeNode(ed, cba, [], 1.036);
+    let ab: TreeNode = new TreeNode(null, b, a, [], 0.1);
+    let ed: TreeNode = new TreeNode(null, e, d, [], 0.25);
+    let cba: TreeNode = new TreeNode(null, c, ab, [], 0.77);
+    let root: TreeNode = new TreeNode(null, ed, cba, [], 1.036);
 
     return root;
 };
