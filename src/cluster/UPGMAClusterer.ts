@@ -72,6 +72,7 @@ export default class UPGMAClusterer implements Clusterer {
 
             // Recalculate distance from this cluster to other clusters (Use average distance)
             let updatedDistanceMatrix: number[][] = this.copyDistanceMatrix(distanceMatrix);
+
             // Cluster.keys() returns a reference to every cluster at the current step
             for (let j of clusters.keys()) {
                 if (j != x && j != y) {

@@ -1,5 +1,4 @@
 import HeatmapSettings from "./HeatmapSettings";
-import HeatmapValue from "./HeatmapValue";
 import "core-js/stable";
 import "regenerator-runtime/runtime";
 import SVGOptions from "./../svg/SVGOptions";
@@ -21,7 +20,7 @@ export default class Heatmap {
     private highlightedColumn;
     private pixelRatio;
     private lastZoomStatus;
-    constructor(elementIdentifier: HTMLElement, values: (number | HeatmapValue)[][], rowLabels: string[], columnLabels: string[], options?: HeatmapSettings);
+    constructor(elementIdentifier: HTMLElement, values: number[][], rowLabels: string[], columnLabels: string[], options?: HeatmapSettings);
     private fillOptions;
     /**
      * Reset the complete view to it's initial state with the options and data passed in the constructor.

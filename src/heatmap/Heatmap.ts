@@ -57,7 +57,7 @@ export default class Heatmap {
 
     constructor(
         elementIdentifier: HTMLElement,
-        values: (number | HeatmapValue)[][],
+        values: number[][],
         rowLabels: string[],
         columnLabels: string[],
         options: HeatmapSettings = new HeatmapSettings()
@@ -176,6 +176,7 @@ export default class Heatmap {
                     el.idx!
                 )
             );
+
             columnOrder = this.determineOrder(clusterer.cluster(columnElements));
             for (const [idx, col] of Object.entries(columnOrder)) {
                 inverseColumnOrder[col] = Number.parseInt(idx);
@@ -375,21 +376,7 @@ export default class Heatmap {
      * @param treeNode Root of a dendrogram for which a linear leaf ordering needs to be extracted.
      */
     private determineOrder(treeNode: TreeNode): number[] {
-        if (!treeNode.leftChild && !treeNode.rightChild) {
-            return [treeNode.values[0].id];
-        }
-
-        let left: number[] = [];
-        if (treeNode.leftChild) {
-            left = this.determineOrder(treeNode.leftChild);
-        }
-
-        let right: number[] = [];
-        if (treeNode.rightChild) {
-            right = this.determineOrder(treeNode.rightChild);
-        }
-
-        return left.concat(right);
+        return treeNode.values.map(item => item.id);
     }
 
     /**

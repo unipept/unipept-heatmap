@@ -31,16 +31,31 @@ export default class Preprocessor {
      * @return A two-dimensional grid of HeatmapValue objects.
      */
     preprocessValues(
-        data: (number | HeatmapValue)[][],
+        data: number[][],
         lowColor: string,
         highColor: string,
         colorValues: number
     ): HeatmapValue[][] {
         const interpolator = d3.interpolateLab(d3.lab(lowColor), d3.lab(highColor));
 
+        let lowestValue: number | undefined = undefined;
+        let highestValue: number | undefined = undefined;
+
+        for (let i = 0; i < data.length; i++) {
+            for (let j = 0; j < data[0].length; j++) {
+                if (lowestValue === undefined || data[i][j] < lowestValue) {
+                    lowestValue = data[i][j];
+                }
+
+                if (highestValue === undefined || data[i][j] > highestValue) {
+                    highestValue = data[i][j];
+                }
+            }
+        }
+
         const x = d3.scaleLinear().domain([0, 1]).range([0, 1]);
         const ticks = x.ticks(colorValues);
-        const quantizeScale = d3.scaleQuantize().domain([0, 1]).range(ticks);
+        const quantizeScale = d3.scaleQuantize().domain([lowestValue!, highestValue!]).range(ticks);
 
         return Object.entries(data).map(([rowIdx, row]) => Object.entries(row).map(([colIdx, value]) => {
             if (typeof value === "number") {

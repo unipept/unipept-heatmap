@@ -20,7 +20,7 @@ export default class Preprocessor {
      * @param colorValues How many discrete color values should be generated?
      * @return A two-dimensional grid of HeatmapValue objects.
      */
-    preprocessValues(data: (number | HeatmapValue)[][], lowColor: string, highColor: string, colorValues: number): HeatmapValue[][];
+    preprocessValues(data: number[][], lowColor: string, highColor: string, colorValues: number): HeatmapValue[][];
     /**
      * Order all values in a map, per color.
      *
