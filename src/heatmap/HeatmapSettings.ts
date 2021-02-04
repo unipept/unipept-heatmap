@@ -106,6 +106,12 @@ export default class HeatmapSettings extends Settings {
      */
     dendrogramWidth: number = 100;
 
+    dendrogramLineWidth: number = 1;
+
+    dendrogramColor: string = "#404040";
+
+    allowClustering: boolean = true;
+
     /**
      * Returns the html to use as tooltip for a cell. Is called with a HeatmapValue that represents the current cell and
      * the row and column objects associated with the highlighted cell as parameters. The result of getTooltipTitle is

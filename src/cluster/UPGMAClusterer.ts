@@ -22,6 +22,8 @@ export default class UPGMAClusterer implements Clusterer {
      *        or column similarity.
      */
     cluster(data: ClusterElement[]): TreeNode {
+        TreeNode.currentID = 0;
+
         if (data.length < 1) {
             return new TreeNode(null,null, null, [], 0);
         }
