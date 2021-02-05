@@ -99,7 +99,7 @@ export default class HeatmapSettings extends Settings {
     /**
      * Should a dendrogram be rendered for both axes?
      */
-    dendrogramEnabled: boolean = true;
+    dendrogramEnabled: boolean = false;
 
     /**
      * Amount of pixels that can be taken in by the dendrogram
@@ -109,8 +109,6 @@ export default class HeatmapSettings extends Settings {
     dendrogramLineWidth: number = 1;
 
     dendrogramColor: string = "#404040";
-
-    allowClustering: boolean = true;
 
     /**
      * Returns the html to use as tooltip for a cell. Is called with a HeatmapValue that represents the current cell and

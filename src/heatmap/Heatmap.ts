@@ -51,8 +51,13 @@ export default class Heatmap {
 
     private pixelRatio: number;
 
-    private rowClusterRoot: TreeNode | undefined;
-    private colClusterRoot: TreeNode | undefined;
+    private rowClusterRoot!: TreeNode;
+    private colClusterRoot!: TreeNode;
+    private horizontalNodesPerDepth!: TreeNode[][];
+    private verticalNodesPerDepth!: TreeNode[][];
+
+    private clusteredHorizontal: boolean = false;
+    private clusteredVertical: boolean = false;
 
     private lastZoomStatus: { k: number, x: number, y: number } = {
         k: 1,
@@ -127,6 +132,8 @@ export default class Heatmap {
         // @ts-ignore
         this.visElement.call(zoom);
 
+        this.computeClusterRoots();
+
         this.redraw();
     }
 
@@ -149,21 +156,12 @@ export default class Heatmap {
      * denotes that the clustering is performed on the rows only.
      */
     public async cluster(toCluster: "all" | "columns" | "rows" | "none" = "all") {
-        let clusterer = new UPGMAClusterer(new EuclidianDistanceMetric());
-
-        let molo: Reorderer = new MoloReorderer();
-
         let rowOrder: number[] = Array.from(Array(this.rows.length).keys())
         let inverseRowOrder: number[] = new Array(rowOrder.length);
 
-        if (toCluster === "all" || toCluster === "rows") {
-            // Create a new ClusterElement for every row that exists. This ClusterElement keeps track of an array of
-            // numbers that correspond to a row's values.
-            let rowElements: ClusterElement[] = this.rows.map((el, idx) => new ClusterElement(
-                this.values[idx].filter(val => val.rowId == el.idx).map(x => x.value), el.idx!)
-            );
+        if (toCluster === "all" || toCluster === "rows" && !this.clusteredVertical) {
+            this.clusteredVertical = true;
 
-            this.rowClusterRoot = molo.reorder(clusterer.cluster(rowElements));
             // Now we perform a depth first search on the result in order to find the order of the values
             rowOrder = this.determineOrder(this.rowClusterRoot);
             for (const [idx, row] of Object.entries(rowOrder)) {
@@ -174,16 +172,9 @@ export default class Heatmap {
         let columnOrder: number[] = Array.from(Array(this.columns.length).keys())
         let inverseColumnOrder: number[] = new Array(columnOrder.length);
 
-        if (toCluster === "all" || toCluster === "columns") {
-            // Create a new ClusterElement for every column that exists.
-            let columnElements: ClusterElement[] = this.columns.map(
-                (el, idx) => new ClusterElement(
-                    this.values.map(col => col[idx].value),
-                    el.idx!
-                )
-            );
+        if (toCluster === "all" || toCluster === "columns" && !this.clusteredHorizontal) {
+            this.clusteredHorizontal = true;
 
-            this.colClusterRoot = molo.reorder(clusterer.cluster(columnElements));
             columnOrder = this.determineOrder(this.colClusterRoot);
             for (const [idx, col] of Object.entries(columnOrder)) {
                 inverseColumnOrder[col] = Number.parseInt(idx);
@@ -264,6 +255,31 @@ export default class Heatmap {
         this.valuesPerColor = preprocessor.orderPerColor(this.values);
 
         this.redraw();
+    }
+
+    private computeClusterRoots() {
+        let clusterer = new UPGMAClusterer(new EuclidianDistanceMetric());
+        let molo: Reorderer = new MoloReorderer();
+
+        // Create a new ClusterElement for every row that exists. This ClusterElement keeps track of an array of
+        // numbers that correspond to a row's values.
+        let rowElements: ClusterElement[] = this.rows.map((el, idx) => new ClusterElement(
+            this.values[idx].filter(val => val.rowId == el.idx).map(x => x.value), el.idx!)
+        );
+
+        this.rowClusterRoot = molo.reorder(clusterer.cluster(rowElements));
+        this.verticalNodesPerDepth = this.bfsNodesPerDepth(this.rowClusterRoot);
+
+        // Create a new ClusterElement for every column that exists.
+        let columnElements: ClusterElement[] = this.columns.map(
+            (el, idx) => new ClusterElement(
+                this.values.map(col => col[idx].value),
+                el.idx!
+            )
+        );
+
+        this.colClusterRoot = molo.reorder(clusterer.cluster(columnElements));
+        this.horizontalNodesPerDepth = this.bfsNodesPerDepth(this.colClusterRoot);
     }
 
     public resize(newWidth: number, newHeight: number) {
@@ -665,7 +681,7 @@ export default class Heatmap {
 
         this.context.save();
         this.context.rotate((90 * Math.PI) / 180);
-        this.context.fillStyle = "#404040";
+        this.context.fillStyle = this.settings.labelColor;
         this.context.textBaseline = "bottom";
         this.context.textAlign = "start";
         this.context.font = `${this.settings.fontSize}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
@@ -736,14 +752,20 @@ export default class Heatmap {
     }
 
     private redrawDendrogram(animationStep: number) {
-        this.redrawVerticalDendrogram(animationStep);
-        this.redrawHorizontalDendrogram(animationStep);
+        if (this.settings.dendrogramEnabled) {
+            this.redrawHorizontalDendrogram(animationStep);
+            this.redrawVerticalDendrogram(animationStep);
+        }
     }
 
     private redrawVerticalDendrogram(animationStep: number) {
-        if (!this.rowClusterRoot || animationStep !== 0) {
+        if (animationStep !== 0) {
             return;
         }
+
+        this.context.save();
+
+        const clusterColor: string = this.clusteredVertical ? this.settings.dendrogramColor : "#d3d3d3";
 
         // Calculate size of all the different items
         const squareWidth: number = this.determineSquareWidth();
@@ -751,12 +773,11 @@ export default class Heatmap {
 
         const renderHelper: RenderHelper = new CanvasRenderHelper(this.context);
 
-        const nodesPerDepth: TreeNode[][] = this.bfsNodesPerDepth(this.rowClusterRoot!);
         const verticalLineOffset: number = this.currentViewPort.yTop + dendrogramWidth + squareWidth / 2;
 
         // Maps node with id i to it's corresponding starting position ([x, y]);
         const nodePositions: Map<number, [number, number]> = new Map<number, [number, number]>();
-        const newRowPositions = this.determineOrder(this.rowClusterRoot);
+        const newRowPositions = this.determineOrder(this.rowClusterRoot!);
         for (let i = 0; i < newRowPositions.length; i++) {
             nodePositions.set(
                 newRowPositions[i],
@@ -771,23 +792,25 @@ export default class Heatmap {
         const pixelsPerMerge: number = dendrogramWidth / this.rows.length;
         let currentMergeStep: number = this.currentViewPort.xTop + dendrogramWidth - pixelsPerMerge;
 
-        for (let currentDepth = nodesPerDepth.length - 1; currentDepth > 0; currentDepth--) {
+        for (let currentDepth = this.verticalNodesPerDepth.length - 1; currentDepth > 0; currentDepth--) {
             // We need to iterate over the different nodes in increments of 2 (since these nodes define a merge per 2)
-            for (let i = 0; i < nodesPerDepth[currentDepth].length; i += 2) {
-                const leftChild = nodesPerDepth[currentDepth][i];
-                const rightChild = nodesPerDepth[currentDepth][i + 1];
+            for (let i = 0; i < this.verticalNodesPerDepth[currentDepth].length; i += 2) {
+                const leftChild = this.verticalNodesPerDepth[currentDepth][i];
+                const rightChild = this.verticalNodesPerDepth[currentDepth][i + 1];
                 const parent = leftChild.parent;
 
                 const [leftX, leftY] = nodePositions.get(leftChild.id)!;
                 const [rightX, rightY] = nodePositions.get(rightChild.id)!;
 
+                this.context.beginPath();
                 // Line for the left child
-                renderHelper.renderLine(leftX, leftY, currentMergeStep, leftY, this.settings.dendrogramLineWidth, this.settings.dendrogramColor);
+                renderHelper.renderLine(leftX, leftY, currentMergeStep, leftY, this.settings.dendrogramLineWidth, clusterColor);
                 // Line for right child
-                renderHelper.renderLine(rightX, rightY, currentMergeStep, rightY, this.settings.dendrogramLineWidth, this.settings.dendrogramColor);
+                renderHelper.renderLine(rightX, rightY, currentMergeStep, rightY, this.settings.dendrogramLineWidth, clusterColor);
 
                 // Draw vertical line that connects both items
-                renderHelper.renderLine(currentMergeStep, leftY, currentMergeStep, rightY, this.settings.dendrogramLineWidth, this.settings.dendrogramColor);
+                renderHelper.renderLine(currentMergeStep, leftY, currentMergeStep, rightY, this.settings.dendrogramLineWidth, clusterColor);
+                this.context.closePath();
 
                 // Update the starting position of the parent node.
                 if (parent) {
@@ -798,12 +821,31 @@ export default class Heatmap {
                 currentMergeStep -= pixelsPerMerge;
             }
         }
+
+        if (!this.clusteredVertical) {
+            this.context.rotate(-(90 * Math.PI) / 180);
+            this.context.fillStyle = this.settings.labelColor;
+            const fontSize = 24 * this.lastZoomStatus.k;
+            this.context.font = `${fontSize}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
+            const textWidth = this.context.measureText("Click to cluster").width;
+            this.context.fillText(
+                "Click to cluster",
+                -(this.currentViewPort.yTop + dendrogramWidth + (this.rows.length * (squareWidth + this.settings.squarePadding)) / 2) - textWidth / 2,
+                this.currentViewPort.xTop + dendrogramWidth / 2 + fontSize / 2,
+            );
+        }
+
+        this.context.restore();
     }
 
     private redrawHorizontalDendrogram(animationStep: number) {
-        if (!this.colClusterRoot || animationStep !== 0) {
+        if (animationStep !== 0) {
             return;
         }
+
+        this.context.save();
+
+        const clusterColor: string = this.clusteredHorizontal ? this.settings.dendrogramColor : "#d3d3d3";
 
         // Calculate size of all the different items
         const squareWidth: number = this.determineSquareWidth();
@@ -811,7 +853,6 @@ export default class Heatmap {
 
         const renderHelper: RenderHelper = new CanvasRenderHelper(this.context);
 
-        const nodesPerDepth: TreeNode[][] = this.bfsNodesPerDepth(this.colClusterRoot!);
         const horizontalLineOffset: number = this.currentViewPort.xTop + squareWidth / 2 + dendrogramWidth;
 
         // Maps node with id i to it's corresponding starting position ([x, y]);
@@ -827,27 +868,29 @@ export default class Heatmap {
             );
         }
 
-        // // Calculate the amount of pixels that can be used for each merge
+        // Calculate the amount of pixels that can be used for each merge
         const pixelsPerMerge: number = dendrogramWidth / this.columns.length;
         let currentMergeStep: number = this.currentViewPort.yTop + dendrogramWidth - pixelsPerMerge;
 
-        for (let currentDepth = nodesPerDepth.length - 1; currentDepth > 0; currentDepth--) {
+        for (let currentDepth = this.horizontalNodesPerDepth.length - 1; currentDepth > 0; currentDepth--) {
             // We need to iterate over the different nodes in increments of 2 (since these nodes define a merge per 2)
-            for (let i = 0; i < nodesPerDepth[currentDepth].length; i += 2) {
-                const leftChild = nodesPerDepth[currentDepth][i];
-                const rightChild = nodesPerDepth[currentDepth][i + 1];
+            for (let i = 0; i < this.horizontalNodesPerDepth[currentDepth].length; i += 2) {
+                const leftChild = this.horizontalNodesPerDepth[currentDepth][i];
+                const rightChild = this.horizontalNodesPerDepth[currentDepth][i + 1];
                 const parent = leftChild.parent;
 
                 const [leftX, leftY] = nodePositions.get(leftChild.id)!;
                 const [rightX, rightY] = nodePositions.get(rightChild.id)!;
 
+                this.context.beginPath();
                 // Line for the left child
-                renderHelper.renderLine(leftX, leftY, leftX, currentMergeStep, this.settings.dendrogramLineWidth, this.settings.dendrogramColor);
+                renderHelper.renderLine(leftX, leftY, leftX, currentMergeStep, this.settings.dendrogramLineWidth, clusterColor);
                 // Line for right child
-                renderHelper.renderLine(rightX, rightY, rightX, currentMergeStep, this.settings.dendrogramLineWidth, this.settings.dendrogramColor);
+                renderHelper.renderLine(rightX, rightY, rightX, currentMergeStep, this.settings.dendrogramLineWidth, clusterColor);
 
                 // Draw horizontal line that connects both items
-                renderHelper.renderLine(leftX, currentMergeStep, rightX, currentMergeStep, this.settings.dendrogramLineWidth, this.settings.dendrogramColor);
+                renderHelper.renderLine(leftX, currentMergeStep, rightX, currentMergeStep, this.settings.dendrogramLineWidth, clusterColor);
+                this.context.closePath();
 
                 // Update the starting position of the parent node.
                 if (parent) {
@@ -859,7 +902,19 @@ export default class Heatmap {
             }
         }
 
-        console.log(nodePositions);
+        if (!this.clusteredHorizontal) {
+            this.context.fillStyle = this.settings.labelColor;
+            const fontSize = 24 * this.lastZoomStatus.k;
+            this.context.font = `${fontSize}px 'Helvetica Neue', Helvetica, Arial, sans-serif`;
+            const textWidth = this.context.measureText("Click to cluster").width;
+            this.context.fillText(
+                "Click to cluster",
+                this.currentViewPort.xTop + dendrogramWidth + (this.columns.length * (squareWidth + this.settings.squarePadding)) / 2 - textWidth / 2,
+                this.currentViewPort.yTop + dendrogramWidth / 2 + fontSize / 2,
+            );
+        }
+
+        this.context.restore();
     }
 
     private initTooltip() {

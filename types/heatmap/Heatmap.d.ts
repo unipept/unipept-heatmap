@@ -19,6 +19,10 @@ export default class Heatmap {
     private highlightedRow;
     private highlightedColumn;
     private pixelRatio;
+    private rowClusterRoot;
+    private colClusterRoot;
+    private clusteredHorizontal;
+    private clusteredVertical;
     private lastZoomStatus;
     constructor(elementIdentifier: HTMLElement, values: number[][], rowLabels: string[], columnLabels: string[], options?: HeatmapSettings);
     private fillOptions;
@@ -33,6 +37,7 @@ export default class Heatmap {
      * denotes that the clustering is performed on the rows only.
      */
     cluster(toCluster?: "all" | "columns" | "rows" | "none"): Promise<void>;
+    private computeClusterRoots;
     resize(newWidth: number, newHeight: number): void;
     /**
      * Convert the heatmap to an SVG-string that can easily be downloaded as a valid SVG-file. Note that the current
@@ -55,6 +60,7 @@ export default class Heatmap {
      * and columns currently set to be visualized.
      */
     private determineSquareWidth;
+    private determineDendrogramWidth;
     private computeTextStartX;
     private computeTextStartY;
     private zoomed;
@@ -81,6 +87,19 @@ export default class Heatmap {
     private ellipsizeString;
     private redrawRowTitles;
     private redrawColumnTitles;
+    /**
+     * Perform a BFS search on the given tree and order all encountered nodes per depth level. The resulting output
+     * of this function is a 2D array of the format depth => TreeNode[] (thus it keeps track of all nodes that are
+     * situated at a specific level). Note that the ordering of these nodes per level is not arbitrary, but that nodes
+     * in pairs share the parent (that is, node at index 0 and index 1 share the same parent, etc).
+     *
+     * @param root The root of the tree for which we should order all the children per depth level.
+     * @return A 2D array containing one array per depth level of the given tree.
+     */
+    private bfsNodesPerDepth;
+    private redrawDendrogram;
+    private redrawVerticalDendrogram;
+    private redrawHorizontalDendrogram;
     private initTooltip;
     private findRowAndColForPosition;
     private tooltipMove;
