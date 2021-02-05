@@ -56,6 +56,9 @@ export default class Heatmap {
     private horizontalNodesPerDepth!: TreeNode[][];
     private verticalNodesPerDepth!: TreeNode[][];
 
+    private animatingRows: boolean = false;
+    private animatingCols: boolean = false;
+
     private clusteredHorizontal: boolean = false;
     private clusteredVertical: boolean = false;
 
@@ -118,7 +121,8 @@ export default class Heatmap {
             .attr("style", `width: ${this.settings.width}px; height: ${this.settings.height}px`)
             .on("mouseover", () => this.tooltipMove(d3.event))
             .on("mousemove", () => this.tooltipMove(d3.event))
-            .on("mouseout", () => this.tooltipMove(d3.event));
+            .on("mouseout", () => this.tooltipMove(d3.event))
+            .on("click", () => this.click(d3.event));
         this.context = this.visElement.node()!.getContext("2d")!;
         this.context.scale(this.pixelRatio, this.pixelRatio);
 
@@ -156,31 +160,6 @@ export default class Heatmap {
      * denotes that the clustering is performed on the rows only.
      */
     public async cluster(toCluster: "all" | "columns" | "rows" | "none" = "all") {
-        let rowOrder: number[] = Array.from(Array(this.rows.length).keys())
-        let inverseRowOrder: number[] = new Array(rowOrder.length);
-
-        if (toCluster === "all" || toCluster === "rows" && !this.clusteredVertical) {
-            this.clusteredVertical = true;
-
-            // Now we perform a depth first search on the result in order to find the order of the values
-            rowOrder = this.determineOrder(this.rowClusterRoot);
-            for (const [idx, row] of Object.entries(rowOrder)) {
-                inverseRowOrder[row] = Number.parseInt(idx);
-            }
-        }
-
-        let columnOrder: number[] = Array.from(Array(this.columns.length).keys())
-        let inverseColumnOrder: number[] = new Array(columnOrder.length);
-
-        if (toCluster === "all" || toCluster === "columns" && !this.clusteredHorizontal) {
-            this.clusteredHorizontal = true;
-
-            columnOrder = this.determineOrder(this.colClusterRoot);
-            for (const [idx, col] of Object.entries(columnOrder)) {
-                inverseColumnOrder[col] = Number.parseInt(idx);
-            }
-        }
-
         const animationDuration = this.settings.animationsEnabled ? this.settings.animationDuration / 2 : 0;
 
         // Function that animates the movement of the rows and columns
@@ -208,51 +187,80 @@ export default class Heatmap {
             });
         }
 
-        // First animate rows
-        const columnIdentity = Array.from(Array(this.columns.length).keys());
-        await createAnimator(inverseRowOrder, columnIdentity);
-
-        let newValues = [];
-        // Swap rows into the correct position
-        for (const row of rowOrder) {
-            newValues.push(this.values[row]);
-        }
-
-        // Swap row titles
-        const newRowTitles = [];
-        for (const row of rowOrder) {
-            newRowTitles.push(this.rows[row]);
-        }
-
         const preprocessor = new Preprocessor();
 
-        this.rows = newRowTitles;
-        this.values = newValues;
-        this.valuesPerColor = preprocessor.orderPerColor(this.values);
+        let rowOrder: number[] = Array.from(Array(this.rows.length).keys())
+        let inverseRowOrder: number[] = new Array(rowOrder.length);
 
-        // Then animate columns
-        const rowIdentity = Array.from(Array(this.rows.length).keys());
-        await createAnimator(rowIdentity, inverseColumnOrder);
+        if (toCluster === "all" || toCluster === "rows" && !this.clusteredVertical) {
+            this.clusteredVertical = true;
 
-        newValues = [];
-        // Swap columns
-        for (const row of rowIdentity) {
-            let newRow: HeatmapValue[] = [];
-            for (const column of columnOrder) {
-                newRow.push(this.values[row][column]);
+            // Now we perform a depth first search on the result in order to find the order of the values
+            rowOrder = this.determineOrder(this.rowClusterRoot);
+            for (const [idx, row] of Object.entries(rowOrder)) {
+                inverseRowOrder[row] = Number.parseInt(idx);
             }
-            newValues.push(newRow);
+
+            // First animate rows
+            const columnIdentity = Array.from(Array(this.columns.length).keys());
+            this.animatingRows = true;
+            await createAnimator(inverseRowOrder, columnIdentity);
+            this.animatingRows = false;
+
+            let newValues = [];
+            // Swap rows into the correct position
+            for (const row of rowOrder) {
+                newValues.push(this.values[row]);
+            }
+
+            // Swap row titles
+            const newRowTitles = [];
+            for (const row of rowOrder) {
+                newRowTitles.push(this.rows[row]);
+            }
+
+            this.rows = newRowTitles;
+            this.values = newValues;
+            this.valuesPerColor = preprocessor.orderPerColor(this.values);
         }
 
-        // Swap column titles
-        const newColumnTitles = [];
-        for (const col of columnOrder) {
-            newColumnTitles.push(this.columns[col]);
-        }
+        let columnOrder: number[] = Array.from(Array(this.columns.length).keys())
+        let inverseColumnOrder: number[] = new Array(columnOrder.length);
 
-        this.columns = newColumnTitles;
-        this.values = newValues;
-        this.valuesPerColor = preprocessor.orderPerColor(this.values);
+        if (toCluster === "all" || toCluster === "columns" && !this.clusteredHorizontal) {
+            this.clusteredHorizontal = true;
+
+            columnOrder = this.determineOrder(this.colClusterRoot);
+            for (const [idx, col] of Object.entries(columnOrder)) {
+                inverseColumnOrder[col] = Number.parseInt(idx);
+            }
+
+            // Then animate columns
+            const rowIdentity = Array.from(Array(this.rows.length).keys());
+            this.animatingCols = true;
+            await createAnimator(rowIdentity, inverseColumnOrder);
+            this.animatingCols = false;
+
+            let newValues = [];
+            // Swap columns
+            for (const row of rowIdentity) {
+                let newRow: HeatmapValue[] = [];
+                for (const column of columnOrder) {
+                    newRow.push(this.values[row][column]);
+                }
+                newValues.push(newRow);
+            }
+
+            // Swap column titles
+            const newColumnTitles = [];
+            for (const col of columnOrder) {
+                newColumnTitles.push(this.columns[col]);
+            }
+
+            this.columns = newColumnTitles;
+            this.values = newValues;
+            this.valuesPerColor = preprocessor.orderPerColor(this.values);
+        }
 
         this.redraw();
     }
@@ -516,7 +524,7 @@ export default class Heatmap {
     private redraw(
         newRowPositions: number[] = Array.from(Array(this.rows.length).keys()),
         newColumnPositions: number[] = Array.from(Array(this.columns.length).keys()),
-        animationStep: number = 0
+        animationStep: number = -1
     ) {
         this.redrawGrid(newRowPositions, newColumnPositions, animationStep);
         this.redrawRowTitles(newRowPositions, animationStep);
@@ -529,6 +537,10 @@ export default class Heatmap {
         newColumnPositions: number[],
         animationStep: number
     ) {
+        if (animationStep === -1) {
+            animationStep = 0;
+        }
+
         let squareWidth = this.determineSquareWidth();
         const dendrogramWidth: number = this.determineDendrogramWidth();
 
@@ -621,6 +633,10 @@ export default class Heatmap {
         newRowPositions: number[],
         animationStep: number
     ) {
+        if (animationStep === -1) {
+            animationStep = 0;
+        }
+
         const squareWidth = this.determineSquareWidth();
         const dendrogramWidth = this.determineDendrogramWidth();
 
@@ -670,6 +686,10 @@ export default class Heatmap {
         newColumnPositions: number[],
         animationStep: number
     ) {
+        if (animationStep === -1) {
+            animationStep = 0;
+        }
+
         let squareWidth = this.determineSquareWidth();
         const dendrogramWidth = this.determineDendrogramWidth();
 
@@ -758,14 +778,19 @@ export default class Heatmap {
         }
     }
 
-    private redrawVerticalDendrogram(animationStep: number) {
-        if (animationStep !== 0) {
-            return;
+    private computeDendrogramColor(clustered: boolean, shouldAnimate: boolean, animationStep: number) {
+        if (animationStep === -1 || !shouldAnimate) {
+            return clustered ? this.settings.dendrogramColor : "#d3d3d3";
         }
 
+        const scale = d3.interpolateLab(d3.lab("#d3d3d3"), d3.lab(this.settings.dendrogramColor));
+        return scale(animationStep);
+    }
+
+    private redrawVerticalDendrogram(animationStep: number) {
         this.context.save();
 
-        const clusterColor: string = this.clusteredVertical ? this.settings.dendrogramColor : "#d3d3d3";
+        const clusterColor: string = this.computeDendrogramColor(this.clusteredVertical, this.animatingRows, animationStep);
 
         // Calculate size of all the different items
         const squareWidth: number = this.determineSquareWidth();
@@ -839,13 +864,9 @@ export default class Heatmap {
     }
 
     private redrawHorizontalDendrogram(animationStep: number) {
-        if (animationStep !== 0) {
-            return;
-        }
-
         this.context.save();
 
-        const clusterColor: string = this.clusteredHorizontal ? this.settings.dendrogramColor : "#d3d3d3";
+        const clusterColor: string = this.computeDendrogramColor(this.clusteredHorizontal, this.animatingCols, animationStep);
 
         // Calculate size of all the different items
         const squareWidth: number = this.determineSquareWidth();
@@ -973,6 +994,47 @@ export default class Heatmap {
                 .style("top", (event.pageY + 10) + "px")
                 .style("left", (event.pageX + 10) + "px")
                 .style("visibility", "visible");
+        }
+    }
+
+    /**
+     * Determines if a click occurred on one of the dendrograms and if clustering should be applied to the heatmap.
+     *
+     * @param event
+     * @private
+     */
+    private click(event: MouseEvent) {
+        if (!this.settings.dendrogramEnabled) {
+            return;
+        }
+
+        const dendroWidth = this.determineDendrogramWidth();
+        const squareWidth = this.determineSquareWidth();
+
+        // @ts-ignore
+        const rect = event.target.getBoundingClientRect();
+        const x = event.clientX - rect.left;
+        const y = event.clientY - rect.top;
+
+        if (
+            x >= this.currentViewPort.xTop &&
+            x <= this.currentViewPort.xTop + dendroWidth &&
+            y >= this.currentViewPort.yTop + dendroWidth &&
+            y <= this.currentViewPort.yTop + dendroWidth + this.rows.length * (squareWidth + this.settings.squarePadding)
+        ) {
+            // Clicked on the vertical dendrogram (and thus cluster vertically)
+            this.cluster("rows");
+            return;
+        }
+
+        if (
+            x >= this.currentViewPort.xTop + dendroWidth &&
+            x <= this.currentViewPort.xTop + dendroWidth + this.columns.length * (squareWidth + this.settings.squarePadding) &&
+            y >= this.currentViewPort.yTop &&
+            y <= this.currentViewPort.yTop + dendroWidth
+        ) {
+            this.cluster("columns");
+            return;
         }
     }
 }
