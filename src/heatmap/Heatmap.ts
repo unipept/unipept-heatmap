@@ -192,7 +192,7 @@ export default class Heatmap {
         let rowOrder: number[] = Array.from(Array(this.rows.length).keys())
         let inverseRowOrder: number[] = new Array(rowOrder.length);
 
-        if (toCluster === "all" || toCluster === "rows" && !this.clusteredVertical) {
+        if ((toCluster === "all" || toCluster === "rows") && !this.clusteredVertical) {
             this.clusteredVertical = true;
 
             // Now we perform a depth first search on the result in order to find the order of the values
@@ -227,7 +227,7 @@ export default class Heatmap {
         let columnOrder: number[] = Array.from(Array(this.columns.length).keys())
         let inverseColumnOrder: number[] = new Array(columnOrder.length);
 
-        if (toCluster === "all" || toCluster === "columns" && !this.clusteredHorizontal) {
+        if ((toCluster === "all" || toCluster === "columns") && !this.clusteredHorizontal) {
             this.clusteredHorizontal = true;
 
             columnOrder = this.determineOrder(this.colClusterRoot);
