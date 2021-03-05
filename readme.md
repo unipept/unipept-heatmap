@@ -1,3 +1,5 @@
+⚠️ This repository has been archived. The heatmap visualization (and all of its options) is now fully integrated into the [Unipept Visualizations repository](https://github.com/unipept/unipept-visualizations). ⚠️
+
 # Unipept heatmap
 This repository contains a standalone version of the Unipept heatmap. The heatmap is part of the
 Unipept visualizations project and will be merged with that repository in the future.
